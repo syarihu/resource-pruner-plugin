@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Used colors (referenced in theme) -->
+    <color name="primary">#6200EE</color>
+    <color name="primary_dark">#3700B3</color>
+    <color name="accent">#03DAC5</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+
+    <!-- Unused colors (should be pruned) -->
+    <color name="unused_color">#FF0000</color>
+    <color name="old_background">#CCCCCC</color>
+    <color name="deprecated_tint">#888888</color>
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Used strings -->
+    <string name="app_name">Resource Pruner Example</string>
+    <string name="hello_world">Hello, World!</string>
+    <string name="icon_description">App icon</string>
+
+    <!-- Unused strings (should be pruned) -->
+    <string name="unused_string">This string is not used anywhere</string>
+    <string name="another_unused">Another unused string</string>
+    <string name="deprecated_message">This message was deprecated</string>
+</resources>
