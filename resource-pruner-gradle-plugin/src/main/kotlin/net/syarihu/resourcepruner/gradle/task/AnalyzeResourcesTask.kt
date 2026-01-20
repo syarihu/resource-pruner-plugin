@@ -26,7 +26,9 @@ abstract class AnalyzeResourcesTask : BaseResourcePrunerTask() {
     val sourceDirs = sourceDirectories.files.map { it.toPath() }
 
     logger.lifecycle("Resource directories: ${resDirs.size}")
+    resDirs.forEach { logger.lifecycle("  - $it") }
     logger.lifecycle("Source directories: ${sourceDirs.size}")
+    sourceDirs.forEach { logger.lifecycle("  - $it") }
 
     val excludePatterns = compileExcludePatterns()
     if (excludePatterns.isNotEmpty()) {

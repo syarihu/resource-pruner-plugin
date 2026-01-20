@@ -114,6 +114,11 @@ class ResourcePrunerPlugin : Plugin<Project> {
       sources.add(javaSources.all)
     }
 
+    // Add manifest directory (contains AndroidManifest.xml which references resources)
+    variant.sources.manifests.let { manifestSources ->
+      sources.add(manifestSources.all)
+    }
+
     return sources
   }
 

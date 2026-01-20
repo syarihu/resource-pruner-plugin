@@ -41,9 +41,14 @@ class XmlUsageDetector : UsageDetector {
 
     // Also scan source roots for AndroidManifest.xml and other XML files
     sourceRoots
-      .filter { it.exists() && it.isDirectory() }
+      .filter { it.exists() }
       .forEach { sourceRoot ->
-        references.addAll(detectManifestAndOtherXml(sourceRoot))
+        if (sourceRoot.isDirectory()) {
+          references.addAll(detectManifestAndOtherXml(sourceRoot))
+        } else if (sourceRoot.isRegularFile() && sourceRoot.extension.lowercase() == "xml") {
+          // Handle individual XML files (e.g., AndroidManifest.xml passed directly)
+          references.addAll(detectInXmlFile(sourceRoot))
+        }
       }
 
     return references
@@ -184,12 +189,13 @@ class XmlUsageDetector : UsageDetector {
      * - @drawable/icon
      * - @string/app_name
      * - @+id/button (the + is optional)
+     * - @style/Theme.Example (style names can contain dots)
      *
      * Group 1: Resource type
-     * Group 2: Resource name
+     * Group 2: Resource name (may contain dots for styles/themes)
      */
     private val RESOURCE_REFERENCE_PATTERN = Regex(
-      """@\+?(\w+)/(\w+)""",
+      """@\+?(\w+)/([\w.]+)""",
     )
 
     /**
