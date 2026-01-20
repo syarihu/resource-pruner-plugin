@@ -135,121 +135,37 @@ class ResourcePrunerPlugin : Plugin<Project> {
     isLibrary: Boolean,
     extension: ResourcePrunerExtension,
   ) {
-    // Paraphrase plugin: generateFormattedResources{Variant}
+    // Current project's code generation tasks
     project.tasks.findByName("generateFormattedResources$variantName")?.let { paraphraseTask ->
       task.dependsOn(paraphraseTask)
     }
-
-    // DataBinding: dataBindingGenBaseClasses{Variant}
     project.tasks.findByName("dataBindingGenBaseClasses$variantName")?.let { dataBindingTask ->
       task.dependsOn(dataBindingTask)
     }
 
-    // For library modules, also depend on code generation tasks in dependent projects
+    // For library modules, add dependencies on dependent projects' code generation tasks
     if (isLibrary && extension.scanDependentProjects.get()) {
       val rootProject = project.rootProject
       rootProject.allprojects.forEach { otherProject ->
         if (otherProject == project) return@forEach
 
         if (projectDependsOn(otherProject, project)) {
-          // Paraphrase task dependency (only if Paraphrase plugin is applied)
-          if (hasParaphrasePlugin(otherProject)) {
-            val paraphraseTaskPath = "${otherProject.path}:generateFormattedResources$variantName"
-            task.dependsOn(paraphraseTaskPath)
-          }
+          val paraphraseTaskName = "generateFormattedResources$variantName"
+          val dataBindingTaskName = "dataBindingGenBaseClasses$variantName"
 
-          // DataBinding task dependency (only if DataBinding is enabled)
-          if (hasDataBinding(otherProject)) {
-            val dataBindingTaskPath = "${otherProject.path}:dataBindingGenBaseClasses$variantName"
-            task.dependsOn(dataBindingTaskPath)
-          }
-        }
-      }
-    }
-  }
+          // Try to add dependency if task already exists
+          otherProject.tasks.findByName(paraphraseTaskName)?.let { task.dependsOn(it) }
+          otherProject.tasks.findByName(dataBindingTaskName)?.let { task.dependsOn(it) }
 
-  /**
-   * Checks if a project has the Paraphrase plugin applied.
-   *
-   * First checks via PluginManager (works when project is fully evaluated),
-   * then falls back to build file parsing for Configuration on demand scenarios.
-   * Note: Build file parsing doesn't detect convention plugins that apply Paraphrase.
-   */
-  private fun hasParaphrasePlugin(project: Project): Boolean {
-    // Check PluginManager
-    if (project.pluginManager.hasPlugin("app.cash.paraphrase")) {
-      return true
-    }
-
-    // Parse build file as fallback
-    val buildFiles = listOf(
-      project.file("build.gradle.kts"),
-      project.file("build.gradle"),
-    )
-
-    for (buildFile in buildFiles) {
-      if (buildFile.exists() && buildFile.isFile) {
-        try {
-          val content = buildFile.readText()
-          if (content.contains("app.cash.paraphrase") ||
-            content.contains("paraphrase")
-          ) {
-            return true
-          }
-        } catch (e: Exception) {
-          // Ignore read errors
-        }
-      }
-    }
-
-    return false
-  }
-
-  /**
-   * Checks if a project has DataBinding enabled.
-   *
-   * First checks via Android extension (works when project is fully evaluated),
-   * then falls back to build file parsing for Configuration on demand scenarios.
-   */
-  private fun hasDataBinding(project: Project): Boolean {
-    // Check Android extension
-    try {
-      val androidExtension = project.extensions.findByName("android")
-      if (androidExtension != null) {
-        val buildFeatures = androidExtension.javaClass.getMethod("getBuildFeatures").invoke(androidExtension)
-        if (buildFeatures != null) {
-          val dataBinding = buildFeatures.javaClass.getMethod("getDataBinding").invoke(buildFeatures)
-          if (dataBinding == true) {
-            return true
+          // Also listen for task additions to catch tasks registered later
+          otherProject.tasks.whenTaskAdded { addedTask ->
+            if (addedTask.name == paraphraseTaskName || addedTask.name == dataBindingTaskName) {
+              task.dependsOn(addedTask)
+            }
           }
         }
       }
-    } catch (e: Exception) {
-      // Extension not available or method not found
     }
-
-    // Parse build file as fallback
-    val buildFiles = listOf(
-      project.file("build.gradle.kts"),
-      project.file("build.gradle"),
-    )
-
-    for (buildFile in buildFiles) {
-      if (buildFile.exists() && buildFile.isFile) {
-        try {
-          val content = buildFile.readText()
-          if (content.contains("dataBinding") &&
-            (content.contains("= true") || content.contains("=true"))
-          ) {
-            return true
-          }
-        } catch (e: Exception) {
-          // Ignore read errors
-        }
-      }
-    }
-
-    return false
   }
 
   /**
