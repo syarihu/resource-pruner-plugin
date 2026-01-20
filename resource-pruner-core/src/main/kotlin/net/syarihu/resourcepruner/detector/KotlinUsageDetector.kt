@@ -26,9 +26,10 @@ import kotlin.streams.toList
  * - stringResource(R.string.xxx)
  * - painterResource(R.drawable.xxx)
  *
- * Note: This detector skips Paraphrase-generated directories to avoid
- * marking all ICU-formatted strings as used. Actual Paraphrase usage
- * is detected by ParaphraseUsageDetector.
+ * Note: This detector skips generated directories (Paraphrase, ViewBinding) to avoid
+ * marking resources as used when they're only referenced in generated code.
+ * Actual usage is detected by dedicated detectors (ParaphraseUsageDetector,
+ * ViewBindingUsageDetector).
  */
 class KotlinUsageDetector : UsageDetector {
   private val tokenizer = SourceTokenizer()
@@ -39,9 +40,14 @@ class KotlinUsageDetector : UsageDetector {
   ): Set<ResourceReference> {
     return sourceRoots
       .filter { it.exists() && it.isDirectory() }
-      .filter { !ParaphraseUsageDetector.isParaphraseGeneratedDirectory(it) }
+      .filter { !isGeneratedDirectory(it) }
       .flatMap { detectInDirectory(it) }
       .toSet()
+  }
+
+  private fun isGeneratedDirectory(path: Path): Boolean {
+    return ParaphraseUsageDetector.isParaphraseGeneratedDirectory(path) ||
+      ViewBindingUsageDetector.isViewBindingGeneratedDirectory(path)
   }
 
   private fun detectInDirectory(directory: Path): List<ResourceReference> {

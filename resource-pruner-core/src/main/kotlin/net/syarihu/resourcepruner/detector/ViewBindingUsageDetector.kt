@@ -27,6 +27,9 @@ import kotlin.streams.toList
  * - ActivityMainBinding.bind(view)
  * - val binding: ActivityMainBinding
  * - var binding = ActivityMainBinding.inflate(...)
+ *
+ * Note: This detector skips ViewBinding-generated directories to avoid
+ * detecting binding class references within the generated code itself.
  */
 class ViewBindingUsageDetector : UsageDetector {
   private val tokenizer = SourceTokenizer()
@@ -37,6 +40,7 @@ class ViewBindingUsageDetector : UsageDetector {
   ): Set<ResourceReference> {
     return sourceRoots
       .filter { it.exists() && it.isDirectory() }
+      .filter { !isViewBindingGeneratedDirectory(it) }
       .flatMap { detectInDirectory(it) }
       .toSet()
   }
@@ -151,6 +155,19 @@ class ViewBindingUsageDetector : UsageDetector {
           }
         }
       }
+    }
+
+    /**
+     * Checks if a directory is a ViewBinding-generated source directory.
+     *
+     * ViewBinding generates code in directories like:
+     * - build/generated/data_binding_base_class_source_out/debug/out/
+     * - build/generated/data_binding_base_class_source_out/release/out/
+     */
+    fun isViewBindingGeneratedDirectory(path: Path): Boolean {
+      val pathString = path.toString()
+      return pathString.contains("/generated/") &&
+        pathString.contains("/data_binding_base_class_source_out/")
     }
   }
 }
