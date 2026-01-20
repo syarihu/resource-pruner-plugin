@@ -1,5 +1,5 @@
 plugins {
-  alias(libs.plugins.android.application)
+  alias(pluginLibs.plugins.android.application)
   kotlin("android")
 }
 
@@ -36,13 +36,13 @@ kotlin {
 configurations.all {
   resolutionStrategy {
     // Force consistent Kotlin stdlib version
-    force("org.jetbrains.kotlin:kotlin-stdlib:${embeddedKotlinVersion}")
-    force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:${embeddedKotlinVersion}")
+    force("org.jetbrains.kotlin:kotlin-stdlib:$embeddedKotlinVersion")
+    force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$embeddedKotlinVersion")
   }
 }
 
 dependencies {
   implementation(project(":example-lib"))
-  implementation(libs.androidx.core.ktx)
-  implementation(libs.androidx.appcompat)
+  implementation(exampleLibs.androidx.core.ktx)
+  implementation(exampleLibs.androidx.appcompat)
 }
