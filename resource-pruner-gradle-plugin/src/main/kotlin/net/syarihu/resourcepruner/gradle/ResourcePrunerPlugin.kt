@@ -47,7 +47,6 @@ class ResourcePrunerPlugin : Plugin<Project> {
     extension.targetResourceTypes.convention(emptySet())
     extension.scanDependentProjects.convention(true)
 
-
     // Register tasks for Android Application projects
     project.plugins.withType(AppPlugin::class.java) {
       val androidComponents = project.extensions.getByType(ApplicationAndroidComponentsExtension::class.java)
@@ -99,6 +98,9 @@ class ResourcePrunerPlugin : Plugin<Project> {
         task.sourceDirectories.from(sourceDirectories)
         task.sourceDirectories.from(dependentProjectSources)
         task.resDirectories.from(resDirectories)
+
+        // Add dependency on code generation tasks if they exist
+        configureGeneratedCodeDependencies(project, task, variantName, isLibrary, extension)
       }
 
       // Register prune task
@@ -113,16 +115,117 @@ class ResourcePrunerPlugin : Plugin<Project> {
         task.sourceDirectories.from(sourceDirectories)
         task.sourceDirectories.from(dependentProjectSources)
         task.resDirectories.from(resDirectories)
+
+        // Add dependency on code generation tasks if they exist
+        configureGeneratedCodeDependencies(project, task, variantName, isLibrary, extension)
       }
     }
   }
 
   /**
+   * Configures dependencies on code generation tasks.
+   *
+   * This ensures that generated code directories (Paraphrase, ViewBinding, etc.)
+   * are populated before the resource pruner scans them.
+   */
+  private fun configureGeneratedCodeDependencies(
+    project: Project,
+    task: org.gradle.api.Task,
+    variantName: String,
+    isLibrary: Boolean,
+    extension: ResourcePrunerExtension,
+  ) {
+    // Paraphrase plugin: generateFormattedResources{Variant}
+    project.tasks.findByName("generateFormattedResources$variantName")?.let { paraphraseTask ->
+      task.dependsOn(paraphraseTask)
+    }
+
+    // For library modules, also depend on Paraphrase tasks in dependent projects
+    if (isLibrary && extension.scanDependentProjects.get()) {
+      val rootProject = project.rootProject
+      rootProject.allprojects.forEach { otherProject ->
+        if (otherProject == project) return@forEach
+
+        // Check if otherProject depends on this project and has Paraphrase plugin
+        if (projectDependsOn(otherProject, project) && hasParaphrasePlugin(otherProject)) {
+          // Add dependency on dependent project's Paraphrase task using task path string
+          // This works even with Configuration on demand since Gradle resolves it lazily
+          val paraphraseTaskPath = "${otherProject.path}:generateFormattedResources$variantName"
+          task.dependsOn(paraphraseTaskPath)
+        }
+      }
+    }
+
+    // ViewBinding is handled by Android Gradle Plugin automatically through variant.sources.kotlin
+    // which includes generated sources, so no explicit dependency is needed here.
+  }
+
+  /**
+   * Checks if a project has the Paraphrase plugin applied.
+   *
+   * This parses the build file to detect the plugin, which works even
+   * with Configuration on demand when the project hasn't been fully evaluated.
+   */
+  private fun hasParaphrasePlugin(project: Project): Boolean {
+    val buildFiles = listOf(
+      project.file("build.gradle.kts"),
+      project.file("build.gradle"),
+    )
+
+    for (buildFile in buildFiles) {
+      if (buildFile.exists() && buildFile.isFile) {
+        try {
+          val content = buildFile.readText()
+          // Check for Paraphrase plugin application
+          if (content.contains("app.cash.paraphrase") ||
+            content.contains("paraphrase")
+          ) {
+            return true
+          }
+        } catch (e: Exception) {
+          // Ignore read errors
+        }
+      }
+    }
+
+    return false
+  }
+
+  /**
+   * Checks if a project depends on another project.
+   */
+  private fun projectDependsOn(
+    dependentProject: Project,
+    targetProject: Project,
+  ): Boolean {
+    // Approach 1: Check Gradle configurations (works when project is fully configured)
+    val commonConfigs = listOf(
+      "implementation",
+      "api",
+      "compileOnly",
+      "runtimeOnly",
+      "debugImplementation",
+      "releaseImplementation",
+    )
+
+    for (configName in commonConfigs) {
+      val config = dependentProject.configurations.findByName(configName)
+      if (config != null) {
+        val projectDeps = config.dependencies.filterIsInstance<ProjectDependency>()
+        if (projectDeps.any { it.path == targetProject.path }) {
+          return true
+        }
+      }
+    }
+
+    // Approach 2: Parse build files directly (works with Configuration on demand)
+    return checkBuildFileForDependency(dependentProject, targetProject)
+  }
+
+  /**
    * Gets the source directories for a variant.
    */
-  private fun getSourceDirectories(
-    variant: Variant,
-  ): List<Any> {
+  private fun getSourceDirectories(variant: Variant): List<Any> {
     val sources = mutableListOf<Any>()
 
     // Add Kotlin/Java source directories
@@ -144,9 +247,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
   /**
    * Gets the resource directories for a variant.
    */
-  private fun getResDirectories(
-    variant: Variant,
-  ): List<Any> {
+  private fun getResDirectories(variant: Variant): List<Any> {
     val resources = mutableListOf<Any>()
 
     // Add res directories
@@ -173,38 +274,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
     rootProject.allprojects.forEach { otherProject ->
       if (otherProject == project) return@forEach
 
-      // Check if otherProject depends on this project
-      // Try multiple approaches to detect dependencies
-
-      var dependsOnThisProject = false
-
-      // Approach 1: Check Gradle configurations (works when project is fully configured)
-      val commonConfigs = listOf(
-        "implementation",
-        "api",
-        "compileOnly",
-        "runtimeOnly",
-        "debugImplementation",
-        "releaseImplementation",
-      )
-
-      for (configName in commonConfigs) {
-        val config = otherProject.configurations.findByName(configName)
-        if (config != null) {
-          val projectDeps = config.dependencies.filterIsInstance<ProjectDependency>()
-          if (projectDeps.any { it.path == project.path }) {
-            dependsOnThisProject = true
-            break
-          }
-        }
-      }
-
-      // Approach 2: Parse build files directly (works with Configuration on demand)
-      if (!dependsOnThisProject) {
-        dependsOnThisProject = checkBuildFileForDependency(otherProject, project)
-      }
-
-      if (dependsOnThisProject) {
+      if (projectDependsOn(otherProject, project)) {
         // Add source directories from the dependent project
         val srcMainKotlin = otherProject.file("src/main/kotlin")
         val srcMainJava = otherProject.file("src/main/java")
