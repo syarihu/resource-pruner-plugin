@@ -1,6 +1,7 @@
 plugins {
   alias(libs.plugins.android.application)
   kotlin("android")
+  alias(libs.plugins.paraphrase)
   id("net.syarihu.resource-pruner")
 }
 
@@ -41,7 +42,9 @@ kotlin {
 dependencies {
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
+  implementation(libs.androidx.recyclerview)
   implementation(libs.material)
+  implementation(libs.paraphrase.runtime)
 }
 
 resourcePruner {
