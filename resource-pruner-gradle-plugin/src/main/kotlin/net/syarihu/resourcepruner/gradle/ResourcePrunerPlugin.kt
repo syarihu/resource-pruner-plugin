@@ -163,10 +163,18 @@ class ResourcePrunerPlugin : Plugin<Project> {
   /**
    * Checks if a project has the Paraphrase plugin applied.
    *
-   * This parses the build file to detect the plugin, which works even
-   * with Configuration on demand when the project hasn't been fully evaluated.
+   * Uses multiple detection strategies:
+   * 1. PluginManager (works when project is fully evaluated)
+   * 2. Build file parsing (fallback for Configuration on demand, but doesn't work with convention plugins)
    */
   private fun hasParaphrasePlugin(project: Project): Boolean {
+    // Approach 1: Check PluginManager (works when project is evaluated)
+    if (project.pluginManager.hasPlugin("app.cash.paraphrase")) {
+      return true
+    }
+
+    // Approach 2: Parse build file (fallback for Configuration on demand)
+    // Note: This doesn't detect convention plugins that apply Paraphrase
     val buildFiles = listOf(
       project.file("build.gradle.kts"),
       project.file("build.gradle"),
