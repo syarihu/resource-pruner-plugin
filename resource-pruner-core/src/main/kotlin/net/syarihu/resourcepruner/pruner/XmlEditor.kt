@@ -33,48 +33,6 @@ class XmlEditor {
   }
 
   /**
-   * Removes a value-based resource by editing the XML file.
-   *
-   * This method removes the specific XML element while preserving
-   * the rest of the file's formatting.
-   *
-   * @param resource The resource to remove
-   * @return Result indicating success or failure
-   */
-  fun removeValueResource(resource: DetectedResource): Result<Unit> {
-    return runCatching {
-      val location = resource.location as? ResourceLocation.ValueLocation
-        ?: return Result.failure(IllegalArgumentException("Expected ValueLocation for value resource"))
-
-      val lines = location.filePath.readLines().toMutableList()
-
-      // Validate line numbers
-      if (location.startLine < 1 || location.endLine > lines.size) {
-        throw IllegalStateException(
-          "Invalid line range: ${location.startLine}-${location.endLine} for file with ${lines.size} lines",
-        )
-      }
-
-      // Remove the lines containing the resource element
-      // We need to be careful to also remove any trailing empty lines that might
-      // have been part of the element's formatting
-      val startIndex = location.startLine - 1 // Convert to 0-indexed
-      val endIndex = location.endLine - 1
-
-      // Remove lines from end to start to maintain correct indices
-      for (i in endIndex downTo startIndex) {
-        lines.removeAt(i)
-      }
-
-      // Remove any resulting consecutive blank lines
-      val cleanedLines = removeConsecutiveBlankLines(lines)
-
-      // Write the modified content back
-      location.filePath.writeLines(cleanedLines)
-    }
-  }
-
-  /**
    * Removes consecutive blank lines, leaving at most one blank line between elements.
    */
   private fun removeConsecutiveBlankLines(lines: List<String>): List<String> {
