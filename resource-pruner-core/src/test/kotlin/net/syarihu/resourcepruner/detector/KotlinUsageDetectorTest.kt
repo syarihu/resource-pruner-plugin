@@ -1,0 +1,205 @@
+package net.syarihu.resourcepruner.detector
+
+import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
+import net.syarihu.resourcepruner.model.ReferencePattern
+import net.syarihu.resourcepruner.model.ResourceType
+import java.nio.file.Files
+import kotlin.io.path.createDirectories
+import kotlin.io.path.writeText
+
+class KotlinUsageDetectorTest : DescribeSpec({
+  describe("KotlinUsageDetector") {
+    val detector = KotlinUsageDetector()
+
+    describe("detect") {
+      it("should detect R.drawable references") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val kotlinFile = tempDir.resolve("Test.kt")
+          kotlinFile.writeText(
+            """
+            package com.example
+
+            class Test {
+                fun loadIcon() {
+                    val icon = R.drawable.ic_launcher
+                    val bg = R.drawable.bg_button
+                }
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 2
+          references.map { it.resourceName } shouldContainExactlyInAnyOrder listOf("ic_launcher", "bg_button")
+          references.all { it.resourceType == ResourceType.File.Drawable } shouldBe true
+          references.all { it.location.pattern == ReferencePattern.KOTLIN_R_CLASS } shouldBe true
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect R.string references") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val kotlinFile = tempDir.resolve("Test.kt")
+          kotlinFile.writeText(
+            """
+            package com.example
+
+            class Test {
+                fun getText() {
+                    getString(R.string.app_name)
+                    getString(R.string.hello_world)
+                }
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 2
+          references.map { it.resourceName } shouldContainExactlyInAnyOrder listOf("app_name", "hello_world")
+          references.all { it.resourceType == ResourceType.Value.StringRes } shouldBe true
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect references in Java files") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val javaFile = tempDir.resolve("Test.java")
+          javaFile.writeText(
+            """
+            package com.example;
+
+            public class Test {
+                public void loadIcon() {
+                    int icon = R.drawable.ic_launcher;
+                }
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 1
+          references.first().resourceName shouldBe "ic_launcher"
+          references.first().location.pattern shouldBe ReferencePattern.JAVA_R_CLASS
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should ignore references in comments") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val kotlinFile = tempDir.resolve("Test.kt")
+          kotlinFile.writeText(
+            """
+            package com.example
+
+            class Test {
+                // R.drawable.commented_out should be ignored
+                /* R.string.block_comment also ignored */
+                fun loadIcon() {
+                    val icon = R.drawable.ic_launcher
+                }
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 1
+          references.first().resourceName shouldBe "ic_launcher"
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should ignore references in string literals") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val kotlinFile = tempDir.resolve("Test.kt")
+          kotlinFile.writeText(
+            """
+            package com.example
+
+            class Test {
+                val text = "R.drawable.in_string should be ignored"
+                fun loadIcon() {
+                    val icon = R.drawable.ic_launcher
+                }
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 1
+          references.first().resourceName shouldBe "ic_launcher"
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect multiple resource types") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val kotlinFile = tempDir.resolve("Test.kt")
+          kotlinFile.writeText(
+            """
+            package com.example
+
+            class Test {
+                fun setup() {
+                    setContentView(R.layout.activity_main)
+                    val icon = R.drawable.ic_launcher
+                    val text = R.string.app_name
+                    val color = R.color.colorPrimary
+                }
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 4
+          references.map { it.resourceType } shouldContainExactlyInAnyOrder listOf(
+            ResourceType.File.Layout,
+            ResourceType.File.Drawable,
+            ResourceType.Value.StringRes,
+            ResourceType.Value.Color,
+          )
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should scan nested directories") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val nestedDir = tempDir.resolve("com/example").createDirectories()
+          nestedDir.resolve("Test.kt").writeText(
+            """
+            val icon = R.drawable.nested_icon
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 1
+          references.first().resourceName shouldBe "nested_icon"
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+    }
+  }
+})
