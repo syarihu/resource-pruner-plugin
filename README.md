@@ -172,10 +172,13 @@ val greeting = getString(FormattedResources.greeting_format(name = "World"))
 
 The plugin automatically detects resource usage across module boundaries. When analyzing a library module, it scans the source code of all projects that depend on it.
 
+**Important:** You only need to apply the plugin to modules whose resources you want to manage. Dependent modules (app modules that use the library) do NOT need the plugin - they will be scanned automatically.
+
 ```
 project-root/
 ├── app/                    # Uses resources from common-ui
 │   └── build.gradle.kts    # implementation(project(":common-ui"))
+│                           # ← No plugin needed here
 └── common-ui/              # Library with shared resources
     └── build.gradle.kts    # Has resource-pruner plugin
 ```
@@ -187,7 +190,17 @@ When you run `./gradlew :common-ui:analyzeResourcesDebug`, the plugin will:
 
 This prevents false positives where library resources appear unused because they're only referenced in app modules.
 
-To disable this feature (e.g., for standalone library development):
+If your app module also has its own resources to manage, you can apply the plugin there too:
+
+```kotlin
+// app/build.gradle.kts
+plugins {
+    id("com.android.application")
+    id("net.syarihu.resource-pruner")  // Optional: only if app has its own resources to prune
+}
+```
+
+To disable dependent project scanning (e.g., for standalone library development):
 
 ```kotlin
 resourcePruner {
