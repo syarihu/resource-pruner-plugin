@@ -45,7 +45,7 @@ sealed class ResourceType {
    * Value-based resources defined as elements within XML files in res/values/.
    */
   sealed class Value(
-    override val typeName: kotlin.String,
+    override val typeName: String,
   ) : ResourceType() {
     /** String resources (<string>) */
     data object StringRes : Value("string")

@@ -63,7 +63,6 @@ class KotlinUsageDetector : UsageDetector {
   private fun detectInFile(file: Path): List<ResourceReference> {
     val content = file.readText()
     val cleanedContent = tokenizer.removeCommentsAndStrings(content)
-    val lines = content.lines()
     val cleanedLines = cleanedContent.lines()
 
     val references = mutableListOf<ResourceReference>()

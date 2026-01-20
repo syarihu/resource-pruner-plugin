@@ -10,7 +10,6 @@ import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.readText
-import kotlin.streams.toList
 
 /**
  * Collects value-based resources from Android resource directories.
@@ -72,19 +71,7 @@ class ValueResourceCollector : ResourceCollector {
     lines.forEachIndexed { index, line ->
       val lineNumber = index + 1 // 1-indexed
 
-      if (currentElement != null) {
-        // Continue building multi-line element
-        currentElement!!.appendLine(line)
-
-        if (isElementEnd(line, currentElement!!.tagName)) {
-          currentElement!!.endLine = lineNumber
-          val resource = currentElement!!.build(xmlFile, qualifiers)
-          if (resource != null) {
-            resources.add(resource)
-          }
-          currentElement = null
-        }
-      } else {
+      if (currentElement == null) {
         // Look for element start
         val elementStart = parseElementStart(line)
         if (elementStart != null) {
@@ -115,18 +102,30 @@ class ValueResourceCollector : ResourceCollector {
               name = name,
               startLine = lineNumber,
             )
-            currentElement!!.appendLine(line)
+            currentElement.appendLine(line)
 
             // Check if element ends on the same line (but not self-closing)
             if (isElementEnd(line, tagName) && !isSelfClosing(line)) {
-              currentElement!!.endLine = lineNumber
-              val resource = currentElement!!.build(xmlFile, qualifiers)
+              currentElement.endLine = lineNumber
+              val resource = currentElement.build(xmlFile, qualifiers)
               if (resource != null) {
                 resources.add(resource)
               }
               currentElement = null
             }
           }
+        }
+      } else {
+        // Continue building multi-line element
+        currentElement.appendLine(line)
+
+        if (isElementEnd(line, currentElement.tagName)) {
+          currentElement.endLine = lineNumber
+          val resource = currentElement.build(xmlFile, qualifiers)
+          if (resource != null) {
+            resources.add(resource)
+          }
+          currentElement = null
         }
       }
     }
@@ -141,7 +140,11 @@ class ValueResourceCollector : ResourceCollector {
    */
   private fun parseElementStart(line: String): Pair<String, String?>? {
     val trimmed = line.trim()
-    if (!trimmed.startsWith("<") || trimmed.startsWith("</") || trimmed.startsWith("<?") || trimmed.startsWith("<!--")) {
+    if (!trimmed.startsWith("<") ||
+      trimmed.startsWith("</") ||
+      trimmed.startsWith("<?") ||
+      trimmed.startsWith("<!--")
+    ) {
       return null
     }
 

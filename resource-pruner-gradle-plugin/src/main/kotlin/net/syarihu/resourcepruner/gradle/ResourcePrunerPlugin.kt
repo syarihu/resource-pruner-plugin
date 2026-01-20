@@ -71,8 +71,8 @@ class ResourcePrunerPlugin : Plugin<Project> {
       val variantName = variant.name.replaceFirstChar { it.uppercaseChar() }
 
       // Get source directories
-      val sourceDirectories = getSourceDirectories(project, variant)
-      val resDirectories = getResDirectories(project, variant)
+      val sourceDirectories = getSourceDirectories(variant)
+      val resDirectories = getResDirectories(variant)
 
       // For library modules, also scan dependent projects' sources
       val dependentProjectSources = if (isLibrary) {
@@ -84,7 +84,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
           }
         }
       } else {
-        project.provider { emptyList<File>() }
+        project.provider { emptyList() }
       }
 
       // Register analyze task
@@ -121,7 +121,6 @@ class ResourcePrunerPlugin : Plugin<Project> {
    * Gets the source directories for a variant.
    */
   private fun getSourceDirectories(
-    project: Project,
     variant: Variant,
   ): List<Any> {
     val sources = mutableListOf<Any>()
@@ -146,7 +145,6 @@ class ResourcePrunerPlugin : Plugin<Project> {
    * Gets the resource directories for a variant.
    */
   private fun getResDirectories(
-    project: Project,
     variant: Variant,
   ): List<Any> {
     val resources = mutableListOf<Any>()
