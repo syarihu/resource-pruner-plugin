@@ -34,8 +34,10 @@ rootProject.name = "resource-pruner-plugin"
 include(":resource-pruner-core")
 include(":resource-pruner-gradle-plugin")
 
-// example module requires the plugin to be published to Maven Local first
-// Use -PexcludeExample to skip it during initial build
+// example modules require the plugin to be published to Maven Local first
+// Use -PexcludeExample to skip them during initial build
 if (providers.gradleProperty("excludeExample").isPresent.not()) {
   include(":example")
+  include(":example-multi-app")
+  include(":example-lib")
 }
