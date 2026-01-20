@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Used by app module (should NOT be pruned) -->
+    <string name="lib_used_string">This string is used by the app module</string>
+    <string name="lib_common_message">A common message from the library</string>
+
+    <!-- Not used anywhere (should be pruned) -->
+    <string name="lib_unused_string">This library string is not used anywhere</string>
+    <string name="lib_deprecated_message">This was deprecated and is no longer used</string>
+</resources>
