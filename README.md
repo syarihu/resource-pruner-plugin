@@ -24,6 +24,8 @@ A Gradle plugin that acts as your project's gardener, carefully pruning unused r
   - Configurable exclusion patterns for resources that should never be removed
   - Per-variant tasks for fine-grained control
 
+- **Multi-Module Support**: Library resources used by dependent app modules are correctly detected as used, preventing false positive pruning
+
 ## Requirements
 
 - Android Gradle Plugin 8.0+
@@ -112,6 +114,7 @@ resourcePruner {
 | `excludeNames` | `List<String>` | Regex patterns for resource names to exclude from pruning |
 | `targetResourceTypes` | `Set<String>` | Resource types to target (empty = all types) |
 | `sourceSets` | `Set<String>` | Source sets to scan for usage (default: `["main"]`) |
+| `scanDependentProjects` | `Boolean` | Scan dependent projects for resource usage (default: `true`) |
 
 ### Supported Resource Types
 
@@ -165,11 +168,39 @@ val greeting = getString(FormattedResources.greeting_format(name = "World"))
 // unused_format will be marked for pruning since FormattedResources.unused_format() is never called
 ```
 
+### Multi-Module Support
+
+The plugin automatically detects resource usage across module boundaries. When analyzing a library module, it scans the source code of all projects that depend on it.
+
+```
+project-root/
+├── app/                    # Uses resources from common-ui
+│   └── build.gradle.kts    # implementation(project(":common-ui"))
+└── common-ui/              # Library with shared resources
+    └── build.gradle.kts    # Has resource-pruner plugin
+```
+
+When you run `./gradlew :common-ui:analyzeResourcesDebug`, the plugin will:
+1. Find all projects that depend on `common-ui` (in this case, `app`)
+2. Scan those projects' source code for resource references
+3. Correctly identify library resources that are used by dependent modules
+
+This prevents false positives where library resources appear unused because they're only referenced in app modules.
+
+To disable this feature (e.g., for standalone library development):
+
+```kotlin
+resourcePruner {
+    scanDependentProjects.set(false)
+}
+```
+
 ## Example Project
 
-See the `example/` directory for a complete example demonstrating:
+See the `example/` and `example-lib/` directories for a complete example demonstrating:
 - ViewBinding detection (including ViewBinding-only layouts)
 - Paraphrase integration
+- Multi-module resource usage detection
 - Various unused resources that get pruned
 
 ## License
