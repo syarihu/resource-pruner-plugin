@@ -125,7 +125,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
   /**
    * Configures dependencies on code generation tasks.
    *
-   * This ensures that generated code directories (Paraphrase, ViewBinding, etc.)
+   * This ensures that generated code directories (Paraphrase, DataBinding, etc.)
    * are populated before the resource pruner scans them.
    */
   private fun configureGeneratedCodeDependencies(
@@ -140,41 +140,48 @@ class ResourcePrunerPlugin : Plugin<Project> {
       task.dependsOn(paraphraseTask)
     }
 
-    // For library modules, also depend on Paraphrase tasks in dependent projects
+    // DataBinding: dataBindingGenBaseClasses{Variant}
+    project.tasks.findByName("dataBindingGenBaseClasses$variantName")?.let { dataBindingTask ->
+      task.dependsOn(dataBindingTask)
+    }
+
+    // For library modules, also depend on code generation tasks in dependent projects
     if (isLibrary && extension.scanDependentProjects.get()) {
       val rootProject = project.rootProject
       rootProject.allprojects.forEach { otherProject ->
         if (otherProject == project) return@forEach
 
-        // Check if otherProject depends on this project and has Paraphrase plugin
-        if (projectDependsOn(otherProject, project) && hasParaphrasePlugin(otherProject)) {
-          // Add dependency on dependent project's Paraphrase task using task path string
-          // This works even with Configuration on demand since Gradle resolves it lazily
-          val paraphraseTaskPath = "${otherProject.path}:generateFormattedResources$variantName"
-          task.dependsOn(paraphraseTaskPath)
+        if (projectDependsOn(otherProject, project)) {
+          // Paraphrase task dependency (only if Paraphrase plugin is applied)
+          if (hasParaphrasePlugin(otherProject)) {
+            val paraphraseTaskPath = "${otherProject.path}:generateFormattedResources$variantName"
+            task.dependsOn(paraphraseTaskPath)
+          }
+
+          // DataBinding task dependency (only if DataBinding is enabled)
+          if (hasDataBinding(otherProject)) {
+            val dataBindingTaskPath = "${otherProject.path}:dataBindingGenBaseClasses$variantName"
+            task.dependsOn(dataBindingTaskPath)
+          }
         }
       }
     }
-
-    // ViewBinding is handled by Android Gradle Plugin automatically through variant.sources.kotlin
-    // which includes generated sources, so no explicit dependency is needed here.
   }
 
   /**
    * Checks if a project has the Paraphrase plugin applied.
    *
-   * Uses multiple detection strategies:
-   * 1. PluginManager (works when project is fully evaluated)
-   * 2. Build file parsing (fallback for Configuration on demand, but doesn't work with convention plugins)
+   * First checks via PluginManager (works when project is fully evaluated),
+   * then falls back to build file parsing for Configuration on demand scenarios.
+   * Note: Build file parsing doesn't detect convention plugins that apply Paraphrase.
    */
   private fun hasParaphrasePlugin(project: Project): Boolean {
-    // Approach 1: Check PluginManager (works when project is evaluated)
+    // Check PluginManager
     if (project.pluginManager.hasPlugin("app.cash.paraphrase")) {
       return true
     }
 
-    // Approach 2: Parse build file (fallback for Configuration on demand)
-    // Note: This doesn't detect convention plugins that apply Paraphrase
+    // Parse build file as fallback
     val buildFiles = listOf(
       project.file("build.gradle.kts"),
       project.file("build.gradle"),
@@ -184,9 +191,55 @@ class ResourcePrunerPlugin : Plugin<Project> {
       if (buildFile.exists() && buildFile.isFile) {
         try {
           val content = buildFile.readText()
-          // Check for Paraphrase plugin application
           if (content.contains("app.cash.paraphrase") ||
             content.contains("paraphrase")
+          ) {
+            return true
+          }
+        } catch (e: Exception) {
+          // Ignore read errors
+        }
+      }
+    }
+
+    return false
+  }
+
+  /**
+   * Checks if a project has DataBinding enabled.
+   *
+   * First checks via Android extension (works when project is fully evaluated),
+   * then falls back to build file parsing for Configuration on demand scenarios.
+   */
+  private fun hasDataBinding(project: Project): Boolean {
+    // Check Android extension
+    try {
+      val androidExtension = project.extensions.findByName("android")
+      if (androidExtension != null) {
+        val buildFeatures = androidExtension.javaClass.getMethod("getBuildFeatures").invoke(androidExtension)
+        if (buildFeatures != null) {
+          val dataBinding = buildFeatures.javaClass.getMethod("getDataBinding").invoke(buildFeatures)
+          if (dataBinding == true) {
+            return true
+          }
+        }
+      }
+    } catch (e: Exception) {
+      // Extension not available or method not found
+    }
+
+    // Parse build file as fallback
+    val buildFiles = listOf(
+      project.file("build.gradle.kts"),
+      project.file("build.gradle"),
+    )
+
+    for (buildFile in buildFiles) {
+      if (buildFile.exists() && buildFile.isFile) {
+        try {
+          val content = buildFile.readText()
+          if (content.contains("dataBinding") &&
+            (content.contains("= true") || content.contains("=true"))
           ) {
             return true
           }
