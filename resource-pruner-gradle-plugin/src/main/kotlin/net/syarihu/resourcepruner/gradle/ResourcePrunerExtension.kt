@@ -1,6 +1,7 @@
 package net.syarihu.resourcepruner.gradle
 
 import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
 
 /**
@@ -59,4 +60,21 @@ abstract class ResourcePrunerExtension {
    * ```
    */
   abstract val sourceSets: SetProperty<String>
+
+  /**
+   * Whether to scan dependent projects' source code for resource usage.
+   *
+   * When enabled (default), library modules will scan the source code of
+   * projects that depend on them to detect resource usage. This prevents
+   * library resources that are used by app modules from being incorrectly
+   * marked as unused.
+   *
+   * Defaults to true.
+   *
+   * Example:
+   * ```kotlin
+   * scanDependentProjects.set(false) // Disable cross-module scanning
+   * ```
+   */
+  abstract val scanDependentProjects: Property<Boolean>
 }
