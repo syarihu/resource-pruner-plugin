@@ -31,6 +31,7 @@ class CompositeUsageDetector(
      * - KotlinUsageDetector (for Kotlin/Java R class references)
      * - XmlUsageDetector (for XML resource references)
      * - ViewBindingUsageDetector (for ViewBinding references)
+     * - ParaphraseUsageDetector (for Paraphrase FormattedResources usage)
      */
     fun createDefault(): CompositeUsageDetector {
       return CompositeUsageDetector(
@@ -38,6 +39,7 @@ class CompositeUsageDetector(
           KotlinUsageDetector(),
           XmlUsageDetector(),
           ViewBindingUsageDetector(),
+          ParaphraseUsageDetector(),
         ),
       )
     }

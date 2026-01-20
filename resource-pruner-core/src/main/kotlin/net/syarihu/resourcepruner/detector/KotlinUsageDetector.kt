@@ -25,6 +25,10 @@ import kotlin.streams.toList
  * It also handles Compose resource functions like:
  * - stringResource(R.string.xxx)
  * - painterResource(R.drawable.xxx)
+ *
+ * Note: This detector skips Paraphrase-generated directories to avoid
+ * marking all ICU-formatted strings as used. Actual Paraphrase usage
+ * is detected by ParaphraseUsageDetector.
  */
 class KotlinUsageDetector : UsageDetector {
   private val tokenizer = SourceTokenizer()
@@ -35,6 +39,7 @@ class KotlinUsageDetector : UsageDetector {
   ): Set<ResourceReference> {
     return sourceRoots
       .filter { it.exists() && it.isDirectory() }
+      .filter { !ParaphraseUsageDetector.isParaphraseGeneratedDirectory(it) }
       .flatMap { detectInDirectory(it) }
       .toSet()
   }
