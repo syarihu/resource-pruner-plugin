@@ -1,13 +1,16 @@
 package net.syarihu.resourcepruner.example
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import app.cash.paraphrase.getString
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
+import app.cash.paraphrase.getString
 import net.syarihu.resourcepruner.example.databinding.ActivityMainBinding
 import net.syarihu.resourcepruner.example.databinding.ItemViewbindingOnlyBinding
+import net.syarihu.resourcepruner.examplelib.R as LibR
+import net.syarihu.resourcepruner.examplelib.databinding.LayoutLibUsedBinding
 
 /**
  * Example activity to demonstrate resource-pruner-plugin.
@@ -18,9 +21,13 @@ import net.syarihu.resourcepruner.example.databinding.ItemViewbindingOnlyBinding
  * - R.string.app_name (via AndroidManifest)
  * - R.string.hello_world (directly)
  * - R.string.greeting_format (via Paraphrase FormattedResources)
- * - R.string.count_format (via Paraphrase FormattedResources)
  * - R.color.primary (via theme/styles)
  * - R.drawable.ic_used_icon (directly)
+ *
+ * Library resources used (from example-lib module):
+ * - R.string.lib_used_string (directly)
+ * - R.drawable.ic_lib_used_icon (directly)
+ * - R.layout.layout_lib_used (via ViewBinding)
  *
  * Resources NOT used (should be pruned):
  * - R.string.unused_string
@@ -30,6 +37,12 @@ import net.syarihu.resourcepruner.example.databinding.ItemViewbindingOnlyBinding
  * - R.color.unused_color
  * - R.layout.layout_unused
  * - R.menu.menu_unused
+ *
+ * Library resources NOT used (should be pruned from example-lib):
+ * - R.string.lib_unused_string
+ * - R.string.lib_deprecated_message
+ * - R.drawable.ic_lib_unused_icon
+ * - R.layout.layout_lib_unused
  */
 class MainActivity : AppCompatActivity() {
 
@@ -50,7 +63,15 @@ class MainActivity : AppCompatActivity() {
     val greeting = getString(FormattedResources.greeting_format(name = "World"))
 
     // Log for demonstration
-    android.util.Log.d("MainActivity", "Greeting: $greeting")
+    Log.d("MainActivity", "Greeting: $greeting")
+
+    // Use resources from example-lib module
+    // These usages should prevent the library resources from being pruned
+    val libMessage = getString(LibR.string.lib_used_string)
+    Log.d("MainActivity", "Library message: $libMessage")
+
+    // Use library drawable
+    binding.imageView.setImageResource(LibR.drawable.ic_lib_used_icon)
   }
 
   /**
@@ -75,6 +96,32 @@ class MainActivity : AppCompatActivity() {
           false,
         )
         return ItemViewHolder(binding)
+      }
+    }
+  }
+
+  /**
+   * Example ViewHolder that uses layout_lib_used.xml from the library module via ViewBinding.
+   *
+   * This demonstrates that multi-module ViewBinding usage is correctly detected.
+   * The plugin should scan this app module's source code when analyzing example-lib's resources.
+   */
+  class LibraryItemViewHolder(
+    private val binding: LayoutLibUsedBinding,
+  ) : RecyclerView.ViewHolder(binding.root) {
+
+    fun bind(message: String) {
+      binding.libTextView.text = message
+    }
+
+    companion object {
+      fun create(parent: ViewGroup): LibraryItemViewHolder {
+        val binding = LayoutLibUsedBinding.inflate(
+          LayoutInflater.from(parent.context),
+          parent,
+          false,
+        )
+        return LibraryItemViewHolder(binding)
       }
     }
   }
