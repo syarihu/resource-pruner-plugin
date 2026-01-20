@@ -8,6 +8,9 @@
     <!-- Used via Paraphrase (ICU message format) -->
     <string name="greeting_format">Hello, {name}!</string>
 
+    <!-- Unused Paraphrase string (generated but method not called) -->
+    <string name="unused_paraphrase">Unused: {value}</string>
+
     <!-- Unused strings (should be pruned) -->
     <string name="unused_string">This string is not used anywhere</string>
     <string name="another_unused">Another unused string</string>
