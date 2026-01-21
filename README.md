@@ -27,6 +27,11 @@ A Gradle plugin that acts as your project's gardener, carefully pruning unused r
 
 - **Multi-Module Support**: Library resources used by dependent app modules are correctly detected as used, preventing false positive pruning
 
+- **Build Variant Aware**: Detects resources across all source sets for each variant:
+  - Base resources (`src/main/res`)
+  - Build type specific resources (`src/debug/res`, `src/release/res`)
+  - Product flavor specific resources (`src/staging/res`, etc.)
+
 ## Requirements
 
 - Android Gradle Plugin 8.0+
