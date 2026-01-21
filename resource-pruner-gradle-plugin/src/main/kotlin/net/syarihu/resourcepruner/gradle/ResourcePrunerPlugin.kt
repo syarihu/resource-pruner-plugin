@@ -1,11 +1,7 @@
 package net.syarihu.resourcepruner.gradle
 
 import com.android.build.api.variant.AndroidComponentsExtension
-import com.android.build.api.variant.ApplicationAndroidComponentsExtension
-import com.android.build.api.variant.LibraryAndroidComponentsExtension
 import com.android.build.api.variant.Variant
-import com.android.build.gradle.AppPlugin
-import com.android.build.gradle.LibraryPlugin
 import net.syarihu.resourcepruner.gradle.task.AnalyzeResourcesTask
 import net.syarihu.resourcepruner.gradle.task.PruneResourcesTask
 import org.gradle.api.Plugin
@@ -48,14 +44,16 @@ class ResourcePrunerPlugin : Plugin<Project> {
     extension.scanDependentProjects.convention(true)
 
     // Register tasks for Android Application projects
-    project.plugins.withType(AppPlugin::class.java) {
-      val androidComponents = project.extensions.getByType(ApplicationAndroidComponentsExtension::class.java)
+    project.plugins.withId("com.android.application") {
+      val androidComponents = project.extensions
+        .getByName("androidComponents") as AndroidComponentsExtension<*, *, *>
       registerTasks(project, androidComponents, extension, isLibrary = false)
     }
 
     // Register tasks for Android Library projects
-    project.plugins.withType(LibraryPlugin::class.java) {
-      val androidComponents = project.extensions.getByType(LibraryAndroidComponentsExtension::class.java)
+    project.plugins.withId("com.android.library") {
+      val androidComponents = project.extensions
+        .getByName("androidComponents") as AndroidComponentsExtension<*, *, *>
       registerTasks(project, androidComponents, extension, isLibrary = true)
     }
   }
@@ -77,7 +75,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
       val dependentProjectSources = if (isLibrary) {
         project.provider {
           if (extension.scanDependentProjects.get()) {
-            getDependentProjectSourceDirectories(project, variant.name)
+            getDependentProjectSourceDirectories(project, variantName.lowercase())
           } else {
             emptyList()
           }
@@ -146,22 +144,22 @@ class ResourcePrunerPlugin : Plugin<Project> {
     // For library modules, add dependencies on dependent projects' code generation tasks
     if (isLibrary && extension.scanDependentProjects.get()) {
       val rootProject = project.rootProject
-      rootProject.allprojects.forEach { otherProject ->
-        if (otherProject == project) return@forEach
 
-        if (projectDependsOn(otherProject, project)) {
-          val paraphraseTaskName = "generateFormattedResources$variantName"
-          val dataBindingTaskName = "dataBindingGenBaseClasses$variantName"
+      // Use collectAllDependentProjects to match getDependentProjectSourceDirectories behavior
+      val allDependents = collectAllDependentProjects(project, rootProject)
 
-          // Try to add dependency if task already exists
-          otherProject.tasks.findByName(paraphraseTaskName)?.let { task.dependsOn(it) }
-          otherProject.tasks.findByName(dataBindingTaskName)?.let { task.dependsOn(it) }
+      for (dependentProject in allDependents) {
+        val paraphraseTaskName = "generateFormattedResources$variantName"
+        val dataBindingTaskName = "dataBindingGenBaseClasses$variantName"
 
-          // Also listen for task additions to catch tasks registered later
-          otherProject.tasks.whenTaskAdded { addedTask ->
-            if (addedTask.name == paraphraseTaskName || addedTask.name == dataBindingTaskName) {
-              task.dependsOn(addedTask)
-            }
+        // Try to add dependency if task already exists
+        dependentProject.tasks.findByName(paraphraseTaskName)?.let { task.dependsOn(it) }
+        dependentProject.tasks.findByName(dataBindingTaskName)?.let { task.dependsOn(it) }
+
+        // Also listen for task additions to catch tasks registered later
+        dependentProject.tasks.whenTaskAdded { addedTask ->
+          if (addedTask.name == paraphraseTaskName || addedTask.name == dataBindingTaskName) {
+            task.dependsOn(addedTask)
           }
         }
       }
@@ -175,7 +173,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
     dependentProject: Project,
     targetProject: Project,
   ): Boolean {
-    // Approach 1: Check Gradle configurations (works when project is fully configured)
+    // Check Gradle configurations (works when project is fully configured)
     val commonConfigs = listOf(
       "implementation",
       "api",
@@ -195,50 +193,17 @@ class ResourcePrunerPlugin : Plugin<Project> {
       }
     }
 
-    // Approach 2: Parse build files directly (works with Configuration on demand)
+    // Parse build files directly (works with Configuration on demand)
     return checkBuildFileForDependency(dependentProject, targetProject)
   }
 
   /**
-   * Gets the source directories for a variant.
-   */
-  private fun getSourceDirectories(variant: Variant): List<Any> {
-    val sources = mutableListOf<Any>()
-
-    // Add Kotlin/Java source directories
-    variant.sources.kotlin?.let { kotlinSources ->
-      sources.add(kotlinSources.all)
-    }
-    variant.sources.java?.let { javaSources ->
-      sources.add(javaSources.all)
-    }
-
-    // Add manifest directory (contains AndroidManifest.xml which references resources)
-    variant.sources.manifests.let { manifestSources ->
-      sources.add(manifestSources.all)
-    }
-
-    return sources
-  }
-
-  /**
-   * Gets the resource directories for a variant.
-   */
-  private fun getResDirectories(variant: Variant): List<Any> {
-    val resources = mutableListOf<Any>()
-
-    // Add res directories
-    variant.sources.res?.let { resSources ->
-      resources.add(resSources.all)
-    }
-
-    return resources
-  }
-
-  /**
-   * Finds all projects that depend on this project and returns their source directories.
+   * Finds all projects that depend on this project (including transitive dependents)
+   * and returns their source directories.
    *
    * This enables library modules to detect resource usage in dependent app/library modules.
+   * It recursively follows the dependency chain to find all modules that may reference
+   * resources from this project.
    */
   private fun getDependentProjectSourceDirectories(
     project: Project,
@@ -247,38 +212,88 @@ class ResourcePrunerPlugin : Plugin<Project> {
     val dependentSources = mutableListOf<File>()
     val rootProject = project.rootProject
 
-    // Find all projects that have a dependency on this project
-    rootProject.allprojects.forEach { otherProject ->
-      if (otherProject == project) return@forEach
+    // Collect all dependent projects including transitive ones
+    val allDependents = collectAllDependentProjects(project, rootProject)
 
-      if (projectDependsOn(otherProject, project)) {
-        // Add source directories from the dependent project
-        val srcMainKotlin = otherProject.file("src/main/kotlin")
-        val srcMainJava = otherProject.file("src/main/java")
-        val srcVariantKotlin = otherProject.file("src/$variantName/kotlin")
-        val srcVariantJava = otherProject.file("src/$variantName/java")
-        val manifestFile = otherProject.file("src/main/AndroidManifest.xml")
+    // Add source directories from all dependent projects
+    for (dependentProject in allDependents) {
+      val srcMainKotlin = dependentProject.file("src/main/kotlin")
+      val srcMainJava = dependentProject.file("src/main/java")
+      val srcVariantKotlin = dependentProject.file("src/$variantName/kotlin")
+      val srcVariantJava = dependentProject.file("src/$variantName/java")
+      val manifestFile = dependentProject.file("src/main/AndroidManifest.xml")
 
-        if (srcMainKotlin.exists()) dependentSources.add(srcMainKotlin)
-        if (srcMainJava.exists()) dependentSources.add(srcMainJava)
-        if (srcVariantKotlin.exists()) dependentSources.add(srcVariantKotlin)
-        if (srcVariantJava.exists()) dependentSources.add(srcVariantJava)
-        if (manifestFile.exists()) dependentSources.add(manifestFile)
+      if (srcMainKotlin.exists()) dependentSources.add(srcMainKotlin)
+      if (srcMainJava.exists()) dependentSources.add(srcMainJava)
+      if (srcVariantKotlin.exists()) dependentSources.add(srcVariantKotlin)
+      if (srcVariantJava.exists()) dependentSources.add(srcVariantJava)
+      if (manifestFile.exists()) dependentSources.add(manifestFile)
 
-        // Also add generated sources (ViewBinding, Paraphrase, etc.)
-        val generatedDataBinding = otherProject.file(
-          "build/generated/data_binding_base_class_source_out/$variantName/out",
-        )
-        val generatedParaphrase = otherProject.file(
-          "build/generated/source/paraphrase/$variantName",
-        )
+      // Also add generated sources (ViewBinding, Paraphrase, etc.)
+      val generatedDataBinding = dependentProject.file(
+        "build/generated/data_binding_base_class_source_out/$variantName/out",
+      )
+      val generatedParaphrase = dependentProject.file(
+        "build/generated/source/paraphrase/$variantName",
+      )
 
-        if (generatedDataBinding.exists()) dependentSources.add(generatedDataBinding)
-        if (generatedParaphrase.exists()) dependentSources.add(generatedParaphrase)
-      }
+      if (generatedDataBinding.exists()) dependentSources.add(generatedDataBinding)
+      if (generatedParaphrase.exists()) dependentSources.add(generatedParaphrase)
+
+      // Add res directories from dependent projects
+      // This is important for detecting resource references in XML files (styles, layouts, etc.)
+      val resMain = dependentProject.file("src/main/res")
+      val resVariant = dependentProject.file("src/$variantName/res")
+
+      if (resMain.exists()) dependentSources.add(resMain)
+      if (resVariant.exists()) dependentSources.add(resVariant)
     }
 
     return dependentSources
+  }
+
+  /**
+   * Collects all projects that depend on the target project, including transitive dependents.
+   *
+   * For example, if A depends on B, and B depends on C (the target), this function
+   * returns both A and B when called with C as the target.
+   */
+  private fun collectAllDependentProjects(
+    targetProject: Project,
+    rootProject: Project,
+  ): Set<Project> {
+    val allDependents = mutableSetOf<Project>()
+    val visited = mutableSetOf<Project>()
+
+    // Find direct dependents of the target project
+    val directDependents = mutableSetOf<Project>()
+    rootProject.allprojects.forEach { otherProject ->
+      if (otherProject != targetProject && projectDependsOn(otherProject, targetProject)) {
+        directDependents.add(otherProject)
+      }
+    }
+
+    allDependents.addAll(directDependents)
+    visited.addAll(directDependents)
+    visited.add(targetProject)
+
+    // Recursively find projects that depend on the direct dependents
+    var currentLevel = directDependents
+    while (currentLevel.isNotEmpty()) {
+      val nextLevel = mutableSetOf<Project>()
+      for (dependentProject in currentLevel) {
+        rootProject.allprojects.forEach { otherProject ->
+          if (!visited.contains(otherProject) && projectDependsOn(otherProject, dependentProject)) {
+            allDependents.add(otherProject)
+            nextLevel.add(otherProject)
+            visited.add(otherProject)
+          }
+        }
+      }
+      currentLevel = nextLevel
+    }
+
+    return allDependents
   }
 
   /**
@@ -298,22 +313,32 @@ class ResourcePrunerPlugin : Plugin<Project> {
     )
 
     // The project path in build files is typically like ":example-lib" or "example-lib"
-    val projectName = targetProject.path // e.g., ":example-lib"
-    val projectNameWithoutColon = projectName.removePrefix(":") // e.g., "example-lib"
+    val projectName = targetProject.path // e.g., ":cross_domain:resources"
+    val projectNameWithoutColon = projectName.removePrefix(":") // e.g., "cross_domain:resources"
+
+    // Generate variable name patterns from project path
+    // e.g., ":cross_domain:resources" -> ["CrossDomain.resources", "crossDomain.resources"]
+    val variablePatterns = generateVariablePatterns(projectNameWithoutColon)
 
     // Patterns to match project dependencies in build files
-    val patterns = listOf(
-      // Kotlin DSL: project(":example-lib") or project(":example-lib")
+    val directPatterns = mutableListOf(
+      // Kotlin DSL: project(":example-lib")
       """project\s*\(\s*["']:?${Regex.escape(projectNameWithoutColon)}["']\s*\)""",
-      // Groovy DSL: project(':example-lib') or project(":example-lib")
+      // Groovy DSL: project(':example-lib')
       """project\s*\(\s*['"]?:?${Regex.escape(projectNameWithoutColon)}['"]?\s*\)""",
     )
+
+    // Add variable reference patterns
+    // e.g., project(Modules.CrossDomain.resources) or project(CrossDomain.resources)
+    for (varPattern in variablePatterns) {
+      directPatterns.add("""project\s*\(\s*(?:\w+\.)*${Regex.escape(varPattern)}\s*\)""")
+    }
 
     for (buildFile in buildFiles) {
       if (buildFile.exists() && buildFile.isFile) {
         try {
           val content = buildFile.readText()
-          for (pattern in patterns) {
+          for (pattern in directPatterns) {
             if (Regex(pattern).containsMatchIn(content)) {
               return true
             }
@@ -325,6 +350,60 @@ class ResourcePrunerPlugin : Plugin<Project> {
     }
 
     return false
+  }
+
+  /**
+   * Generates variable name patterns from a project path.
+   *
+   * e.g., "cross_domain:resources" -> ["CrossDomain.resources", "crossDomain.resources"]
+   * e.g., "feature:home" -> ["Feature.home", "feature.home"]
+   */
+  private fun generateVariablePatterns(projectPath: String): List<String> {
+    val patterns = mutableListOf<String>()
+
+    // Split by colon to get path segments
+    val segments = projectPath.split(":")
+
+    if (segments.size >= 2) {
+      // Convert segments to variable name format
+      // e.g., ["cross_domain", "resources"] -> "CrossDomain.resources"
+      val objectName = segments.dropLast(1).joinToString(".") { segment ->
+        // Convert snake_case to PascalCase
+        segment.split("_").joinToString("") { part ->
+          part.replaceFirstChar { it.uppercaseChar() }
+        }
+      }
+      val propertyName = segments.last()
+
+      // Add PascalCase pattern (e.g., CrossDomain.resources)
+      patterns.add("$objectName.$propertyName")
+
+      // Add camelCase pattern (e.g., crossDomain.resources)
+      val camelCaseObjectName = objectName.replaceFirstChar { it.lowercaseChar() }
+      patterns.add("$camelCaseObjectName.$propertyName")
+    }
+
+    return patterns
+  }
+
+  /**
+   * Gets the source directories for a variant.
+   */
+  private fun getSourceDirectories(variant: Variant): List<Any> {
+    val sources = mutableListOf<Any>()
+    variant.sources.kotlin?.all?.let { sources.add(it) }
+    variant.sources.java?.all?.let { sources.add(it) }
+    sources.add(variant.sources.manifests.all)
+    return sources
+  }
+
+  /**
+   * Gets the resource directories for a variant.
+   */
+  private fun getResDirectories(variant: Variant): List<Any> {
+    val resources = mutableListOf<Any>()
+    variant.sources.res?.all?.let { resources.add(it) }
+    return resources
   }
 
   companion object {
