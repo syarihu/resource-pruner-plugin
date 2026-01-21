@@ -290,6 +290,10 @@ See the `example/` and `example-lib/` directories for a complete example demonst
 - Multi-module resource usage detection
 - Various unused resources that get pruned
 
+## Acknowledgements
+
+This project was inspired by [gradle-unused-resources-remover-plugin](https://github.com/konifar/gradle-unused-resources-remover-plugin).
+
 ## License
 
 ```
