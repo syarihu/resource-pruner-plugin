@@ -200,6 +200,93 @@ class KotlinUsageDetectorTest : DescribeSpec({
           tempDir.toFile().deleteRecursively()
         }
       }
+
+      it("should detect references using import aliases") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val kotlinFile = tempDir.resolve("Test.kt")
+          kotlinFile.writeText(
+            """
+            package com.example
+
+            import net.syarihu.android.easypageshare.resources.R as R_resource
+
+            class Test {
+                fun getText() {
+                    getString(R_resource.string.app_name)
+                    getString(R_resource.string.hello_world)
+                }
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 2
+          references.map { it.resourceName } shouldContainExactlyInAnyOrder listOf("app_name", "hello_world")
+          references.all { it.resourceType == ResourceType.Value.StringRes } shouldBe true
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect both R and aliased references in same file") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val kotlinFile = tempDir.resolve("Test.kt")
+          kotlinFile.writeText(
+            """
+            package com.example
+
+            import net.syarihu.other.R as OtherR
+
+            class Test {
+                fun setup() {
+                    val icon = R.drawable.ic_launcher
+                    val otherIcon = OtherR.drawable.ic_other
+                }
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 2
+          references.map { it.resourceName } shouldContainExactlyInAnyOrder listOf("ic_launcher", "ic_other")
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect multiple import aliases") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val kotlinFile = tempDir.resolve("Test.kt")
+          kotlinFile.writeText(
+            """
+            package com.example
+
+            import net.syarihu.lib1.R as Lib1R
+            import net.syarihu.lib2.R as Lib2R
+
+            class Test {
+                fun setup() {
+                    val icon1 = Lib1R.drawable.ic_lib1
+                    val icon2 = Lib2R.drawable.ic_lib2
+                    val icon3 = R.drawable.ic_main
+                }
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 3
+          references.map { it.resourceName } shouldContainExactlyInAnyOrder listOf("ic_lib1", "ic_lib2", "ic_main")
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
     }
   }
 })

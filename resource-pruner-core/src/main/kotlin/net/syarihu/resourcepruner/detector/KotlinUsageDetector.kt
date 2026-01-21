@@ -22,6 +22,10 @@ import kotlin.streams.toList
  * - R.string.app_name
  * - R.layout.activity_main
  *
+ * It also handles import aliases like:
+ * - import com.example.R as MyR → MyR.string.app_name
+ * - import com.example.R as R_resource → R_resource.drawable.icon
+ *
  * It also handles Compose resource functions like:
  * - stringResource(R.string.xxx)
  * - painterResource(R.drawable.xxx)
@@ -65,12 +69,16 @@ class KotlinUsageDetector : UsageDetector {
     val cleanedContent = tokenizer.removeCommentsAndStrings(content)
     val cleanedLines = cleanedContent.lines()
 
+    // Extract R class aliases from import statements
+    val rClassAliases = extractRClassAliases(content)
+    val pattern = buildRClassPattern(rClassAliases)
+
     val references = mutableListOf<ResourceReference>()
 
     cleanedLines.forEachIndexed { lineIndex, cleanedLine ->
       val lineNumber = lineIndex + 1
 
-      R_CLASS_PATTERN.findAll(cleanedLine).forEach { match ->
+      pattern.findAll(cleanedLine).forEach { match ->
         val typeName = match.groupValues[1]
         val resourceName = match.groupValues[2]
         val resourceType = ResourceType.fromTypeName(typeName)
@@ -100,6 +108,38 @@ class KotlinUsageDetector : UsageDetector {
     return references
   }
 
+  /**
+   * Extracts R class aliases from import statements.
+   *
+   * Matches patterns like:
+   * - import com.example.R as MyR
+   * - import com.example.resources.R as R_resource
+   *
+   * @return Set of alias names (e.g., {"MyR", "R_resource"})
+   */
+  private fun extractRClassAliases(content: String): Set<String> {
+    return R_CLASS_IMPORT_ALIAS_PATTERN.findAll(content)
+      .map { it.groupValues[1] }
+      .toSet()
+  }
+
+  /**
+   * Builds a regex pattern that matches R class references including aliases.
+   *
+   * @param aliases Set of alias names to include in the pattern
+   * @return Regex that matches R.type.name and Alias.type.name
+   */
+  private fun buildRClassPattern(aliases: Set<String>): Regex {
+    if (aliases.isEmpty()) {
+      return R_CLASS_PATTERN
+    }
+    // Escape alias names for regex safety and join with |
+    val escapedAliases = aliases.map { Regex.escape(it) }
+    val allIdentifiers = listOf("R") + escapedAliases
+    val identifierPattern = allIdentifiers.joinToString("|")
+    return Regex("""(?:$identifierPattern)\.(\w+)\.(\w+)""")
+  }
+
   companion object {
     private val SUPPORTED_EXTENSIONS = setOf("kt", "java")
 
@@ -116,6 +156,19 @@ class KotlinUsageDetector : UsageDetector {
      */
     private val R_CLASS_PATTERN = Regex(
       """R\.(\w+)\.(\w+)""",
+    )
+
+    /**
+     * Pattern to match R class import aliases.
+     *
+     * Matches patterns like:
+     * - import com.example.R as MyR
+     * - import com.example.resources.R as R_resource
+     *
+     * Group 1: Alias name
+     */
+    private val R_CLASS_IMPORT_ALIAS_PATTERN = Regex(
+      """import\s+[\w.]+\.R\s+as\s+(\w+)""",
     )
   }
 }
