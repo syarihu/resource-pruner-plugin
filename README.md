@@ -16,7 +16,7 @@ A Gradle plugin that acts as your project's gardener, carefully pruning unused r
   - Paraphrase library support (`FormattedResources.greeting_format()`)
   - AndroidManifest.xml references (`@style/Theme.App`)
 
-- **Smart Generated Code Handling**: Unlike simple grep-based tools, this plugin correctly handles code generation:
+- **Smart Generated Code Handling**: This plugin is aware of code generation and correctly handles:
   - ViewBinding: Only detects layouts that are actually used via binding classes
   - Paraphrase: Only detects ICU-formatted strings where `FormattedResources.xxx()` is actually called
 
