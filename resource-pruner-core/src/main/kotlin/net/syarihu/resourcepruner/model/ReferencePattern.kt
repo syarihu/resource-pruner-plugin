@@ -4,9 +4,6 @@ package net.syarihu.resourcepruner.model
  * Represents how a resource is referenced in the code.
  */
 enum class ReferencePattern {
-  /** XML attribute reference (e.g., android:src="@drawable/xxx") */
-  XML_ATTRIBUTE,
-
   /** XML reference (e.g., @string/xxx) */
   XML_REFERENCE,
 
