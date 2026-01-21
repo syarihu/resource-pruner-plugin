@@ -130,6 +130,64 @@ resourcePruner {
 - `bool`, `integer`, `array` - Value resources
 - `attr` - Attribute resources
 
+### Using with build-logic (Convention Plugins)
+
+For large multi-module projects, you can centralize the plugin configuration using Gradle's [convention plugins](https://docs.gradle.org/current/userguide/sharing_build_logic_between_subprojects.html) pattern.
+
+**1. Add the plugin dependency to your convention module (`build-logic/convention/build.gradle.kts`):**
+
+```kotlin
+dependencies {
+    compileOnly(libs.android.gradlePlugin)
+    compileOnly(libs.resourcePrunerGradle)
+}
+```
+
+**2. Create a configuration function (`ResourcePrunerConfiguration.kt`):**
+
+```kotlin
+import net.syarihu.resourcepruner.gradle.ResourcePrunerExtension
+import org.gradle.api.Project
+import org.gradle.kotlin.dsl.configure
+
+internal fun Project.configureResourcePruner() {
+    extensions.configure<ResourcePrunerExtension> {
+        excludeNames.addAll(
+            "^ic_launcher.*",     // Preserve launcher icons
+            "^google_play_.*",    // Preserve Google Play assets
+        )
+    }
+}
+```
+
+**3. Apply in your convention plugins:**
+
+```kotlin
+// AndroidApplicationConventionPlugin.kt
+class AndroidApplicationConventionPlugin : Plugin<Project> {
+    override fun apply(target: Project) {
+        with(target) {
+            pluginManager.apply("com.android.application")
+            pluginManager.apply("net.syarihu.resource-pruner")
+            configureResourcePruner()
+        }
+    }
+}
+
+// AndroidLibraryConventionPlugin.kt
+class AndroidLibraryConventionPlugin : Plugin<Project> {
+    override fun apply(target: Project) {
+        with(target) {
+            pluginManager.apply("com.android.library")
+            pluginManager.apply("net.syarihu.resource-pruner")
+            configureResourcePruner()
+        }
+    }
+}
+```
+
+This ensures consistent resource pruner configuration across all modules in your project.
+
 ## How It Works
 
 ### Detection Pipeline
