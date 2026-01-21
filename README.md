@@ -94,7 +94,7 @@ Configure the plugin in your module's `build.gradle.kts`:
 ```kotlin
 resourcePruner {
     // Exclude resources matching these regex patterns from pruning
-    excludeNames.addAll(
+    excludeResourceNamePatterns.addAll(
         "^ic_launcher.*",     // Preserve launcher icons
         "^google_play_.*",    // Preserve Google Play assets
         "^app_name$",         // Preserve app name
@@ -112,7 +112,7 @@ resourcePruner {
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `excludeNames` | `List<String>` | Regex patterns for resource names to exclude from pruning |
+| `excludeResourceNamePatterns` | `List<String>` | Regex patterns for resource names to exclude from pruning |
 | `targetResourceTypes` | `Set<String>` | Resource types to target (empty = all types) |
 | `sourceSets` | `Set<String>` | Source sets to scan for usage (default: `["main"]`) |
 | `scanDependentProjects` | `Boolean` | Scan dependent projects for resource usage (default: `true`) |
@@ -152,7 +152,7 @@ import org.gradle.kotlin.dsl.configure
 
 internal fun Project.configureResourcePruner() {
     extensions.configure<ResourcePrunerExtension> {
-        excludeNames.addAll(
+        excludeResourceNamePatterns.addAll(
             "^ic_launcher.*",     // Preserve launcher icons
             "^google_play_.*",    // Preserve Google Play assets
         )

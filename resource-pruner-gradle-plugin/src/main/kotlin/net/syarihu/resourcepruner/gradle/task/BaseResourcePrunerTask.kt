@@ -19,7 +19,7 @@ abstract class BaseResourcePrunerTask : DefaultTask() {
    */
   @get:Input
   @get:Optional
-  abstract val excludeNames: ListProperty<String>
+  abstract val excludeResourceNamePatterns: ListProperty<String>
 
   /**
    * Resource types to target for pruning.
@@ -46,5 +46,5 @@ abstract class BaseResourcePrunerTask : DefaultTask() {
   /**
    * Compiles exclude patterns to Regex objects.
    */
-  protected fun compileExcludePatterns(): List<Regex> = excludeNames.get().map { it.toRegex() }
+  protected fun compileExcludePatterns(): List<Regex> = excludeResourceNamePatterns.get().map { it.toRegex() }
 }

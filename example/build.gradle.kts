@@ -50,7 +50,7 @@ dependencies {
 
 resourcePruner {
   // Exclude launcher icons and app name
-  excludeNames.addAll(
+  excludeResourceNamePatterns.addAll(
     "^ic_launcher.*",
     "^app_name$",
   )

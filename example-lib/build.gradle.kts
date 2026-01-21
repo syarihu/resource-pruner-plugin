@@ -41,7 +41,7 @@ dependencies {
 
 resourcePruner {
   // Exclude common patterns
-  excludeNames.addAll(
+  excludeResourceNamePatterns.addAll(
     "^ic_launcher.*",
   )
 }

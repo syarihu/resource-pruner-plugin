@@ -10,7 +10,7 @@ import org.gradle.api.provider.SetProperty
  * Example usage in build.gradle.kts:
  * ```kotlin
  * resourcePruner {
- *   excludeNames.addAll(
+ *   excludeResourceNamePatterns.addAll(
  *     "^ic_launcher.*",
  *     "^google_play_.*",
  *     "^app_name$",
@@ -26,13 +26,13 @@ abstract class ResourcePrunerExtension {
    *
    * Example:
    * ```kotlin
-   * excludeNames.addAll(
+   * excludeResourceNamePatterns.addAll(
    *   "^ic_launcher.*",  // Preserve launcher icons
    *   "^app_name$",      // Preserve app name
    * )
    * ```
    */
-  abstract val excludeNames: ListProperty<String>
+  abstract val excludeResourceNamePatterns: ListProperty<String>
 
   /**
    * Resource types to target for pruning.

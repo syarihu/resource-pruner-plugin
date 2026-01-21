@@ -22,7 +22,7 @@ import java.io.File
  * }
  *
  * resourcePruner {
- *   excludeNames.addAll("^ic_launcher.*", "^app_name$")
+ *   excludeResourceNamePatterns.addAll("^ic_launcher.*", "^app_name$")
  * }
  * ```
  *
@@ -39,7 +39,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
 
     // Set default values
     extension.sourceSets.convention(setOf("main"))
-    extension.excludeNames.convention(emptyList())
+    extension.excludeResourceNamePatterns.convention(emptyList())
     extension.targetResourceTypes.convention(emptySet())
     extension.scanDependentProjects.convention(true)
 
@@ -91,7 +91,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
       ) { task ->
         task.group = TASK_GROUP
         task.description = "Analyze unused resources for $variantName variant"
-        task.excludeNames.set(extension.excludeNames)
+        task.excludeResourceNamePatterns.set(extension.excludeResourceNamePatterns)
         task.targetResourceTypes.set(extension.targetResourceTypes)
         task.sourceDirectories.from(sourceDirectories)
         task.sourceDirectories.from(dependentProjectSources)
@@ -108,7 +108,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
       ) { task ->
         task.group = TASK_GROUP
         task.description = "Prune unused resources for $variantName variant"
-        task.excludeNames.set(extension.excludeNames)
+        task.excludeResourceNamePatterns.set(extension.excludeResourceNamePatterns)
         task.targetResourceTypes.set(extension.targetResourceTypes)
         task.sourceDirectories.from(sourceDirectories)
         task.sourceDirectories.from(dependentProjectSources)
