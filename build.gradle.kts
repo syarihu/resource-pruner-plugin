@@ -3,6 +3,7 @@ plugins {
   alias(pluginLibs.plugins.android.application) apply false
   alias(pluginLibs.plugins.android.library) apply false
   alias(libs.plugins.spotless)
+  alias(libs.plugins.nmcp) apply false
   alias(libs.plugins.nmcp.aggregation)
 }
 
@@ -19,8 +20,11 @@ nmcpAggregation {
     // AUTOMATIC: Auto-release after validation
     publishingType = "USER_MANAGED"
   }
-  // Include all subprojects that have maven-publish plugin applied
-  publishAllProjectsProbablyBreakingProjectIsolation()
+}
+
+dependencies {
+  nmcpAggregation(project(":resource-pruner-core"))
+  nmcpAggregation(project(":resource-pruner-gradle-plugin"))
 }
 
 // Check if git repository exists for ratchetFrom
