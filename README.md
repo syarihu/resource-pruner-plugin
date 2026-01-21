@@ -80,6 +80,12 @@ Unused resources:
     - unused_paraphrase
 ```
 
+To see which directories are being scanned, use `--info`:
+
+```bash
+./gradlew pruneResourcesPreviewDebug --info
+```
+
 ### Prune Resources
 
 Remove unused resources from your project:

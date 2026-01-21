@@ -25,8 +25,8 @@ abstract class PruneResourcesTask : BaseResourcePrunerTask() {
     val resDirs = resDirectories.files.map { it.toPath() }
     val sourceDirs = sourceDirectories.files.map { it.toPath() }
 
-    logger.lifecycle("Resource directories: ${resDirs.size}")
-    logger.lifecycle("Source directories: ${sourceDirs.size}")
+    logger.info("Resource directories: ${resDirs.size}")
+    logger.info("Source directories: ${sourceDirs.size}")
 
     val excludePatterns = compileExcludePatterns()
     if (excludePatterns.isNotEmpty()) {
