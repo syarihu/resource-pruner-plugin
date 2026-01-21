@@ -130,9 +130,10 @@ class FileResourceCollectorTest : DescribeSpec({
 
           resources shouldHaveSize 3
           // Resource names should NOT include the .9 suffix
+          // e.g., "progress_bg.9.png" -> "progress_bg" (NOT "progress_bg.9")
           resources.map { it.name } shouldContainExactlyInAnyOrder listOf(
-            "progress_bg",      // NOT "progress_bg.9"
-            "button_normal",    // NOT "button_normal.9"
+            "progress_bg",
+            "button_normal",
             "ic_launcher",
           )
         } finally {

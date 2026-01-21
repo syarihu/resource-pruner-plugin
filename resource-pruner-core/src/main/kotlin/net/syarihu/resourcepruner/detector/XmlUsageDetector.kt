@@ -254,14 +254,22 @@ class XmlUsageDetector : UsageDetector {
    */
   private fun isFrameworkStyleName(styleName: String): Boolean {
     // Known framework/library style prefixes
+    // Known framework/library style prefixes:
+    // Theme. - Android themes (Theme.Material, Theme.AppCompat)
+    // Widget. - Android widgets (Widget.AppCompat.Button)
+    // TextAppearance. - Text appearance styles
+    // Base. - Base styles from libraries
+    // Platform. - Platform styles
+    // Animation. - Animation styles
+    // ThemeOverlay. - Theme overlays
     val frameworkPrefixes = listOf(
-      "Theme.",           // Android themes (Theme.Material, Theme.AppCompat)
-      "Widget.",          // Android widgets (Widget.AppCompat.Button)
-      "TextAppearance.",  // Text appearance styles
-      "Base.",            // Base styles from libraries
-      "Platform.",        // Platform styles
-      "Animation.",       // Animation styles
-      "ThemeOverlay.",    // Theme overlays
+      "Theme.",
+      "Widget.",
+      "TextAppearance.",
+      "Base.",
+      "Platform.",
+      "Animation.",
+      "ThemeOverlay.",
     )
     return frameworkPrefixes.any { styleName.startsWith(it) }
   }

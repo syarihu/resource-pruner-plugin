@@ -291,10 +291,13 @@ class XmlUsageDetectorTest : DescribeSpec({
           styleRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf("CustomProgressBarStyle")
 
           val drawableRefs = references.filter { it.resourceType == ResourceType.File.Drawable }
+          // progress_horizontal - from style
+          // progress_bg - from layer-list
+          // progress_primary - from scale inside layer-list
           drawableRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf(
-            "progress_horizontal",  // from style
-            "progress_bg",          // from layer-list
-            "progress_primary",     // from scale inside layer-list
+            "progress_horizontal",
+            "progress_bg",
+            "progress_primary",
           )
         } finally {
           tempDir.toFile().deleteRecursively()
@@ -508,11 +511,13 @@ class XmlUsageDetectorTest : DescribeSpec({
           // Global attrs: customBackground, customScrollOffset (2)
           // Declare-styleable attrs: customBackground, customScrollOffset (2, duplicates)
           val attrRefs = references.filter { it.resourceType == ResourceType.Value.Attr }
+          // Global attrs: customBackground, customScrollOffset
+          // Declare-styleable attrs: customBackground, customScrollOffset (duplicates)
           attrRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf(
-            "customBackground",  // global
-            "customScrollOffset",   // global
-            "customBackground",  // declare-styleable
-            "customScrollOffset",   // declare-styleable
+            "customBackground",
+            "customScrollOffset",
+            "customBackground",
+            "customScrollOffset",
           )
         } finally {
           tempDir.toFile().deleteRecursively()
