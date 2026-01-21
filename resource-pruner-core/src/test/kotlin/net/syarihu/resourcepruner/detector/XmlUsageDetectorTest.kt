@@ -180,6 +180,127 @@ class XmlUsageDetectorTest : DescribeSpec({
         }
       }
 
+      it("should detect drawable references inside nested elements like scale") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val drawableDir = tempDir.resolve("drawable").createDirectories()
+          drawableDir.resolve("progress_horizontal.xml").writeText(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+                <item android:id="@android:id/background"
+                      android:drawable="@drawable/progress_bg" />
+                <item android:id="@android:id/secondaryProgress">
+                    <scale android:scaleWidth="100%"
+                           android:drawable="@drawable/progress_secondary" />
+                </item>
+                <item android:id="@android:id/progress">
+                    <scale android:scaleWidth="100%"
+                           android:drawable="@drawable/progress_primary" />
+                </item>
+            </layer-list>
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(emptyList(), listOf(tempDir))
+
+          val drawableRefs = references.filter { it.resourceType == ResourceType.File.Drawable }
+          drawableRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf(
+            "progress_bg",
+            "progress_secondary",
+            "progress_primary",
+          )
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect drawable references inside style item values") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val valuesDir = tempDir.resolve("values").createDirectories()
+          valuesDir.resolve("styles.xml").writeText(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <resources>
+                <style name="CustomProgressBarStyle" parent="android:Widget.Holo.Light.ProgressBar.Horizontal">
+                    <item name="android:progressDrawable">@drawable/custom_progress_horizontal</item>
+                    <item name="android:indeterminateDrawable">@drawable/custom_progress_indeterminate</item>
+                </style>
+            </resources>
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(emptyList(), listOf(tempDir))
+
+          val drawableRefs = references.filter { it.resourceType == ResourceType.File.Drawable }
+          drawableRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf(
+            "custom_progress_horizontal",
+            "custom_progress_indeterminate",
+          )
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect full reference chain: layout -> style -> drawable -> nested drawable") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          // Layout referencing a style
+          val layoutDir = tempDir.resolve("layout").createDirectories()
+          layoutDir.resolve("activity_main.xml").writeText(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <LinearLayout>
+                <ProgressBar style="@style/CustomProgressBarStyle" />
+            </LinearLayout>
+            """.trimIndent(),
+          )
+
+          // Style referencing a drawable
+          val valuesDir = tempDir.resolve("values").createDirectories()
+          valuesDir.resolve("styles.xml").writeText(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <resources>
+                <style name="CustomProgressBarStyle">
+                    <item name="android:progressDrawable">@drawable/progress_horizontal</item>
+                </style>
+            </resources>
+            """.trimIndent(),
+          )
+
+          // Drawable (layer-list) referencing other drawables
+          val drawableDir = tempDir.resolve("drawable").createDirectories()
+          drawableDir.resolve("progress_horizontal.xml").writeText(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+                <item android:drawable="@drawable/progress_bg" />
+                <item>
+                    <scale android:drawable="@drawable/progress_primary" />
+                </item>
+            </layer-list>
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(emptyList(), listOf(tempDir))
+
+          // Should detect all references in the chain
+          val styleRefs = references.filter { it.resourceType == ResourceType.Value.Style }
+          styleRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf("CustomProgressBarStyle")
+
+          val drawableRefs = references.filter { it.resourceType == ResourceType.File.Drawable }
+          drawableRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf(
+            "progress_horizontal",  // from style
+            "progress_bg",          // from layer-list
+            "progress_primary",     // from scale inside layer-list
+          )
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
       it("should detect references in values XML files") {
         val tempDir = Files.createTempDirectory("res")
         try {
@@ -198,7 +319,12 @@ class XmlUsageDetectorTest : DescribeSpec({
 
           val references = detector.detect(emptyList(), listOf(tempDir))
 
-          references.map { it.resourceName } shouldContainExactlyInAnyOrder listOf("colorPrimary", "bg_window")
+          // colorPrimary appears twice:
+          // - as @color/colorPrimary (color reference)
+          // - as <item name="colorPrimary"> (attr reference)
+          // bg_window appears as @drawable/bg_window (drawable reference)
+          // android:windowBackground is skipped (android: prefix)
+          references.map { it.resourceName } shouldContainExactlyInAnyOrder listOf("colorPrimary", "colorPrimary", "bg_window")
         } finally {
           tempDir.toFile().deleteRecursively()
         }
@@ -233,6 +359,163 @@ class XmlUsageDetectorTest : DescribeSpec({
         } finally {
           tempDir1.toFile().deleteRecursively()
           tempDir2.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect style parent references with dot notation") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val valuesDir = tempDir.resolve("values").createDirectories()
+          valuesDir.resolve("styles.xml").writeText(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <resources>
+                <style name="AppTheme.Base" />
+                <style name="AppTheme.Base.ActionBar" parent="AppTheme.Base" />
+                <style name="MyStyle.Bold" parent="MyStyle" />
+            </resources>
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(emptyList(), listOf(tempDir))
+
+          // Should detect:
+          // - AppTheme.Base from parent="AppTheme.Base"
+          // - AppTheme from implicit dot notation in AppTheme.Base
+          // - AppTheme.Base from implicit dot notation in AppTheme.Base.ActionBar
+          // - AppTheme from implicit dot notation in AppTheme.Base.ActionBar
+          // - MyStyle from parent="MyStyle"
+          // - MyStyle from implicit dot notation in MyStyle.Bold
+          val styleRefs = references.filter { it.resourceType == ResourceType.Value.Style }
+          styleRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf(
+            "AppTheme.Base",
+            "AppTheme",
+            "AppTheme.Base",
+            "AppTheme",
+            "MyStyle",
+            "MyStyle",
+          )
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect theme attribute references with ?attr/ prefix") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val layoutDir = tempDir.resolve("layout").createDirectories()
+          layoutDir.resolve("activity_main.xml").writeText(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <LinearLayout
+                android:background="?attr/colorPrimary"
+                android:textColor="?attr/colorOnPrimary" />
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(emptyList(), listOf(tempDir))
+
+          val attrRefs = references.filter { it.resourceType == ResourceType.Value.Attr }
+          attrRefs shouldHaveSize 2
+          attrRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf("colorPrimary", "colorOnPrimary")
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect library attribute references in style items") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val valuesDir = tempDir.resolve("values").createDirectories()
+          valuesDir.resolve("styles.xml").writeText(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <resources>
+                <style name="CustomTabStyle">
+                    <item name="customIndicatorColor">@color/primary</item>
+                    <item name="customUnderlineColor">@color/secondary</item>
+                    <item name="android:textColor">@color/text</item>
+                </style>
+            </resources>
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(emptyList(), listOf(tempDir))
+
+          // Should detect attr references from <item name="xxx">
+          // android: prefixed items should be skipped
+          val attrRefs = references.filter { it.resourceType == ResourceType.Value.Attr }
+          attrRefs shouldHaveSize 2
+          attrRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf(
+            "customIndicatorColor",
+            "customUnderlineColor",
+          )
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should not detect framework style parents") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val valuesDir = tempDir.resolve("values").createDirectories()
+          valuesDir.resolve("styles.xml").writeText(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <resources>
+                <style name="AppTheme" parent="Theme.Material.Light" />
+                <style name="ButtonStyle" parent="Widget.AppCompat.Button" />
+                <style name="TextStyle" parent="TextAppearance.AppCompat.Body1" />
+            </resources>
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(emptyList(), listOf(tempDir))
+
+          // Framework style parents should NOT be detected as references
+          // Theme., Widget., TextAppearance. are known framework prefixes
+          val styleRefs = references.filter { it.resourceType == ResourceType.Value.Style }
+          styleRefs shouldHaveSize 0
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect attr references inside declare-styleable") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val valuesDir = tempDir.resolve("values").createDirectories()
+          valuesDir.resolve("attrs.xml").writeText(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <resources>
+                <attr name="customBackground" format="reference"/>
+                <attr name="customScrollOffset" format="dimension"/>
+
+                <declare-styleable name="CustomView">
+                    <attr name="customBackground"/>
+                    <attr name="customScrollOffset"/>
+                    <attr name="android:textColor"/>
+                </declare-styleable>
+            </resources>
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(emptyList(), listOf(tempDir))
+
+          // Should detect attr references from <attr name="xxx"/> (both global and inside declare-styleable)
+          // android: prefixed attrs should be skipped
+          // Global attrs: customBackground, customScrollOffset (2)
+          // Declare-styleable attrs: customBackground, customScrollOffset (2, duplicates)
+          val attrRefs = references.filter { it.resourceType == ResourceType.Value.Attr }
+          attrRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf(
+            "customBackground",  // global
+            "customScrollOffset",   // global
+            "customBackground",  // declare-styleable
+            "customScrollOffset",   // declare-styleable
+          )
+        } finally {
+          tempDir.toFile().deleteRecursively()
         }
       }
     }
