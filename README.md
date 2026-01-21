@@ -11,6 +11,7 @@ A Gradle plugin that acts as your project's gardener, carefully pruning unused r
 - **Accurate Detection**: Detects resource usage through multiple patterns:
   - Direct R class references (`R.drawable.icon`, `R.string.app_name`)
   - XML resource references (`@string/app_name`, `@drawable/icon`)
+  - Implicit style parent references via dot notation (`TextStyle.Body` inherits from `TextStyle`)
   - ViewBinding usage (`ActivityMainBinding`, `FragmentHomeBinding`)
   - Paraphrase library support (`FormattedResources.greeting_format()`)
   - AndroidManifest.xml references (`@style/Theme.App`)
