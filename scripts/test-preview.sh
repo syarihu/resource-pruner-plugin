@@ -1,18 +1,18 @@
 #!/bin/bash
 set -e
 
-echo "=== Test: analyzeResources should detect unused resources correctly ==="
+echo "=== Test: pruneResourcesPreview should detect unused resources correctly ==="
 
-# Run analyzeResources on example module
-OUTPUT=$(./gradlew :example:analyzeResourcesDebug --no-configuration-cache 2>&1)
+# Run pruneResourcesPreview on example module
+OUTPUT=$(./gradlew :example:pruneResourcesPreviewDebug --no-configuration-cache 2>&1)
 
 echo "$OUTPUT"
 
 # Verify that unused resources are detected
 if echo "$OUTPUT" | grep -q "Resources to prune:"; then
-  echo "SUCCESS: analyzeResources detected unused resources"
+  echo "SUCCESS: pruneResourcesPreview detected unused resources"
 else
-  echo "FAILURE: analyzeResources did not detect unused resources"
+  echo "FAILURE: pruneResourcesPreview did not detect unused resources"
   exit 1
 fi
 
@@ -31,4 +31,4 @@ else
   exit 1
 fi
 
-echo "SUCCESS: All analyze tests passed"
+echo "SUCCESS: All preview tests passed"

@@ -6,21 +6,21 @@ import net.syarihu.resourcepruner.pruner.DefaultResourcePruner
 import org.gradle.api.tasks.TaskAction
 
 /**
- * Task for analyzing unused resources without removing them.
+ * Task for previewing unused resources without removing them.
  *
  * This task scans the project's resources and source code to identify
  * resources that are not referenced anywhere, but does not remove them.
  *
  * Usage:
  * ```
- * ./gradlew analyzeResourcesDebug
- * ./gradlew analyzeResourcesRelease
+ * ./gradlew pruneResourcesPreviewDebug
+ * ./gradlew pruneResourcesPreviewRelease
  * ```
  */
-abstract class AnalyzeResourcesTask : BaseResourcePrunerTask() {
+abstract class PruneResourcesPreviewTask : BaseResourcePrunerTask() {
   @TaskAction
-  fun analyze() {
-    logger.lifecycle("Analyzing resources...")
+  fun preview() {
+    logger.lifecycle("Previewing resources to prune...")
 
     val resDirs = resDirectories.files.map { it.toPath() }
     val sourceDirs = sourceDirectories.files.map { it.toPath() }

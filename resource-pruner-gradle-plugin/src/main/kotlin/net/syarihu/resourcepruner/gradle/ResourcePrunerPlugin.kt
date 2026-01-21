@@ -2,7 +2,7 @@ package net.syarihu.resourcepruner.gradle
 
 import com.android.build.api.variant.AndroidComponentsExtension
 import com.android.build.api.variant.Variant
-import net.syarihu.resourcepruner.gradle.task.AnalyzeResourcesTask
+import net.syarihu.resourcepruner.gradle.task.PruneResourcesPreviewTask
 import net.syarihu.resourcepruner.gradle.task.PruneResourcesTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -27,7 +27,7 @@ import java.io.File
  * ```
  *
  * Tasks:
- * - `analyzeResources{Variant}`: Analyze unused resources without removing them
+ * - `pruneResourcesPreview{Variant}`: Preview unused resources without removing them
  * - `pruneResources{Variant}`: Remove unused resources
  */
 class ResourcePrunerPlugin : Plugin<Project> {
@@ -84,13 +84,13 @@ class ResourcePrunerPlugin : Plugin<Project> {
         project.provider { emptyList() }
       }
 
-      // Register analyze task
+      // Register preview task
       project.tasks.register(
-        "analyzeResources$variantName",
-        AnalyzeResourcesTask::class.java,
+        "pruneResourcesPreview$variantName",
+        PruneResourcesPreviewTask::class.java,
       ) { task ->
         task.group = TASK_GROUP
-        task.description = "Analyze unused resources for $variantName variant"
+        task.description = "Preview unused resources for $variantName variant"
         task.excludeResourceNamePatterns.set(extension.excludeResourceNamePatterns)
         task.targetResourceTypes.set(extension.targetResourceTypes)
         task.sourceDirectories.from(sourceDirectories)

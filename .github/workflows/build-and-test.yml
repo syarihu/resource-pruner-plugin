@@ -34,11 +34,11 @@ jobs:
       - name: Publish all modules to Maven Local
         run: ./gradlew :resource-pruner-core:publishToMavenLocal :resource-pruner-gradle-plugin:publishToMavenLocal -PexcludeExample --no-configuration-cache
 
-      - name: "Test: analyzeResources detects unused resources correctly"
-        run: ./scripts/test-analyze.sh
+      - name: "Test: pruneResourcesPreview detects unused resources correctly"
+        run: ./scripts/test-preview.sh
 
-      - name: "Test: analyzeResources detects multi-module usage correctly"
-        run: ./scripts/test-analyze-multi-module.sh
+      - name: "Test: pruneResourcesPreview detects multi-module usage correctly"
+        run: ./scripts/test-preview-multi-module.sh
 
       - name: "Test: pruneResources removes unused resources"
         run: ./scripts/test-prune.sh

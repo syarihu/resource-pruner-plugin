@@ -1,11 +1,11 @@
 #!/bin/bash
 set -e
 
-echo "=== Test: analyzeResources should detect multi-module usage correctly ==="
+echo "=== Test: pruneResourcesPreview should detect multi-module usage correctly ==="
 
-# Run analyzeResources on example-lib module
+# Run pruneResourcesPreview on example-lib module
 # This tests that resources used by dependent modules (example, example-multi-app) are preserved
-OUTPUT=$(./gradlew :example-lib:analyzeResourcesDebug --no-configuration-cache 2>&1)
+OUTPUT=$(./gradlew :example-lib:pruneResourcesPreviewDebug --no-configuration-cache 2>&1)
 
 echo "$OUTPUT"
 
@@ -33,4 +33,4 @@ else
   exit 1
 fi
 
-echo "SUCCESS: All multi-module analyze tests passed"
+echo "SUCCESS: All multi-module preview tests passed"

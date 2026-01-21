@@ -21,7 +21,7 @@ A Gradle plugin that acts as your project's gardener, carefully pruning unused r
   - Paraphrase: Only detects ICU-formatted strings where `FormattedResources.xxx()` is actually called
 
 - **Safe Operation**:
-  - Analyze mode to preview changes before pruning
+  - Preview mode to see changes before pruning
   - Configurable exclusion patterns for resources that should never be removed
   - Per-variant tasks for fine-grained control
 
@@ -51,14 +51,14 @@ plugins {
 
 ## Usage
 
-### Analyze Resources
+### Preview Resources
 
 Preview which resources would be removed without actually deleting them:
 
 ```bash
-./gradlew analyzeResourcesDebug
+./gradlew pruneResourcesPreviewDebug
 # or for release variant
-./gradlew analyzeResourcesRelease
+./gradlew pruneResourcesPreviewRelease
 ```
 
 Example output:
@@ -90,7 +90,7 @@ Remove unused resources from your project:
 ./gradlew pruneResourcesRelease
 ```
 
-> **Warning**: This operation modifies your source files. Make sure to commit your changes before running, or use `analyzeResources` first to preview.
+> **Warning**: This operation modifies your source files. Make sure to commit your changes before running, or use `pruneResourcesPreview` first to preview.
 
 ## Configuration
 
@@ -247,7 +247,7 @@ project-root/
     └── build.gradle.kts    # Has resource-pruner plugin
 ```
 
-When you run `./gradlew :common-ui:analyzeResourcesDebug`, the plugin will:
+When you run `./gradlew :common-ui:pruneResourcesPreviewDebug`, the plugin will:
 1. Find all projects that depend on `common-ui` (in this case, `app`)
 2. Scan those projects' source code for resource references
 3. Correctly identify library resources that are used by dependent modules

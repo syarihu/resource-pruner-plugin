@@ -14,7 +14,7 @@ import net.syarihu.resourcepruner.examplelib.R as LibR
  * - example uses: lib_used_string, ic_lib_used_icon, layout_lib_used
  * - example-multi-app uses: lib_unused_string, ic_lib_unused_icon
  *
- * When running analyzeResources on example-lib, only resources unused by BOTH apps
+ * When running pruneResourcesPreview on example-lib, only resources unused by BOTH apps
  * should be marked for pruning:
  * - lib_deprecated_message (unused by both)
  * - layout_lib_unused (unused by both)

@@ -1,4 +1,4 @@
-.PHONY: publish build clean test analyze prune help
+.PHONY: publish build clean test preview prune help
 
 # Publish to Maven Local (core first, then plugin)
 publish:
@@ -19,9 +19,9 @@ all: publish build
 test:
 	./gradlew :resource-pruner-core:test :resource-pruner-gradle-plugin:test -PexcludeExample --no-configuration-cache
 
-# Analyze resources in example project (dry-run style, shows what would be pruned)
-analyze:
-	./gradlew :example:analyzeResourcesDebug --no-configuration-cache
+# Preview resources in example project (dry-run style, shows what would be pruned)
+preview:
+	./gradlew :example:pruneResourcesPreviewDebug --no-configuration-cache
 
 # Actually prune resources in example project
 prune:
@@ -39,9 +39,9 @@ format:
 check:
 	./gradlew spotlessCheck -PexcludeExample --no-configuration-cache
 
-# Full test: publish, build example, analyze, then prune
+# Full test: publish, build example, preview, then prune
 test-prune: publish
-	./gradlew :example:analyzeResourcesDebug --no-configuration-cache
+	./gradlew :example:pruneResourcesPreviewDebug --no-configuration-cache
 	@echo ""
 	@echo "=== Now running prune ==="
 	@echo ""
@@ -58,9 +58,9 @@ help:
 	@echo "  make build-core   - Build core modules only (no example)"
 	@echo "  make all          - Publish and build"
 	@echo "  make test         - Run all unit tests"
-	@echo "  make analyze      - Analyze resources in example (show unused)"
+	@echo "  make preview      - Preview resources in example (show unused)"
 	@echo "  make prune        - Prune unused resources in example"
-	@echo "  make test-prune   - Full test: publish, analyze, and prune"
+	@echo "  make test-prune   - Full test: publish, preview, and prune"
 	@echo "  make clean        - Clean build artifacts"
 	@echo "  make format       - Apply spotless formatting"
 	@echo "  make check        - Check formatting"

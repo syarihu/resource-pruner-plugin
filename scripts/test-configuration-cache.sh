@@ -7,7 +7,7 @@ echo "=== Test: Configuration Cache should work correctly ==="
 ./gradlew clean
 
 # First run - should store cache
-./gradlew :example:analyzeResourcesDebug 2>&1 | tee /tmp/first_run.log
+./gradlew :example:pruneResourcesPreviewDebug 2>&1 | tee /tmp/first_run.log
 
 if grep -q "Configuration cache entry stored" /tmp/first_run.log; then
   echo "SUCCESS: Configuration cache entry stored"
@@ -16,7 +16,7 @@ else
 fi
 
 # Second run - should reuse cache
-./gradlew :example:analyzeResourcesDebug 2>&1 | tee /tmp/second_run.log
+./gradlew :example:pruneResourcesPreviewDebug 2>&1 | tee /tmp/second_run.log
 
 if grep -q "Configuration cache entry reused" /tmp/second_run.log; then
   echo "SUCCESS: Configuration cache entry reused"
