@@ -140,6 +140,33 @@ class XmlUsageDetector : UsageDetector {
           )
         }
       }
+
+      // Find implicit style parent references from dot notation in style names
+      // e.g., <style name="TextStyle.Body"> implicitly inherits from TextStyle
+      // e.g., <style name="TextStyle.Body.Bold"> implicitly inherits from TextStyle.Body
+      STYLE_NAME_PATTERN.findAll(lineWithoutTools).forEach { match ->
+        val styleName = match.groupValues[1]
+        // Only process if the style name contains a dot (indicating inheritance)
+        if (styleName.contains(".") && !styleName.startsWith("android:") && !styleName.startsWith("Theme.")) {
+          val column = match.range.first + 1
+          // Extract all parent style names from the dot notation
+          val parentStyleNames = extractParentStyleNames(styleName)
+          parentStyleNames.forEach { parentName ->
+            references.add(
+              ResourceReference(
+                resourceName = parentName,
+                resourceType = ResourceType.Value.Style,
+                location = ReferenceLocation(
+                  filePath = file,
+                  line = lineNumber,
+                  column = column,
+                  pattern = ReferencePattern.XML_REFERENCE,
+                ),
+              ),
+            )
+          }
+        }
+      }
     }
 
     return references
@@ -151,6 +178,28 @@ class XmlUsageDetector : UsageDetector {
    */
   private fun removeToolsAttributes(line: String): String {
     return TOOLS_ATTRIBUTE_PATTERN.replace(line, "")
+  }
+
+  /**
+   * Extracts all parent style names from a dot-notation style name.
+   *
+   * For example:
+   * - "TextStyle.Body" returns ["TextStyle"]
+   * - "TextStyle.Body.Bold" returns ["TextStyle.Body", "TextStyle"]
+   * - "Parent.Child.GrandChild" returns ["Parent.Child", "Parent"]
+   */
+  private fun extractParentStyleNames(styleName: String): List<String> {
+    val parts = styleName.split(".")
+    if (parts.size < 2) return emptyList()
+
+    val parents = mutableListOf<String>()
+    // Build parent names from the longest to the shortest
+    // e.g., for "A.B.C", we want "A.B" and "A"
+    for (i in parts.size - 1 downTo 1) {
+      val parentName = parts.subList(0, i).joinToString(".")
+      parents.add(parentName)
+    }
+    return parents
   }
 
   /**
@@ -206,6 +255,16 @@ class XmlUsageDetector : UsageDetector {
      */
     private val STYLE_PARENT_PATTERN = Regex(
       """parent\s*=\s*"([^"@]+)"""",
+    )
+
+    /**
+     * Pattern to match style name attribute in style definitions.
+     *
+     * Matches: <style name="StyleName.Child">
+     * Group 1: Style name
+     */
+    private val STYLE_NAME_PATTERN = Regex(
+      """<style\s+[^>]*name\s*=\s*"([^"]+)"""",
     )
 
     /**
