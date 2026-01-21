@@ -115,6 +115,31 @@ class FileResourceCollectorTest : DescribeSpec({
           tempDir2.toFile().deleteRecursively()
         }
       }
+
+      it("should extract correct resource name from 9-patch images") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val drawableDir = tempDir.resolve("drawable").createDirectories()
+          // 9-patch image: the .9 should be removed from the resource name
+          drawableDir.resolve("progress_bg.9.png").writeText("")
+          drawableDir.resolve("button_normal.9.png").writeText("")
+          // Regular image: no .9 suffix
+          drawableDir.resolve("ic_launcher.png").writeText("")
+
+          val resources = collector.collect(listOf(tempDir))
+
+          resources shouldHaveSize 3
+          // Resource names should NOT include the .9 suffix
+          // e.g., "progress_bg.9.png" -> "progress_bg" (NOT "progress_bg.9")
+          resources.map { it.name } shouldContainExactlyInAnyOrder listOf(
+            "progress_bg",
+            "button_normal",
+            "ic_launcher",
+          )
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
     }
   }
 })

@@ -287,6 +287,39 @@ class KotlinUsageDetectorTest : DescribeSpec({
           tempDir.toFile().deleteRecursively()
         }
       }
+
+      it("should detect attr references from R.styleable") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val javaFile = tempDir.resolve("CustomView.java")
+          javaFile.writeText(
+            """
+            package com.example;
+
+            public class CustomView {
+                public void init() {
+                    int tabBg = a.getResourceId(R.styleable.CustomView_customBackground, 0);
+                    int offset = a.getDimensionPixelSize(R.styleable.CustomView_customScrollOffset, 0);
+                    int color = a.getColor(R.styleable.CustomView_customIndicatorColor, 0);
+                }
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          // Should extract attr names from R.styleable.StyleableName_attrName
+          val attrRefs = references.filter { it.resourceType == ResourceType.Value.Attr }
+          attrRefs shouldHaveSize 3
+          attrRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf(
+            "customBackground",
+            "customScrollOffset",
+            "customIndicatorColor",
+          )
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
     }
   }
 })

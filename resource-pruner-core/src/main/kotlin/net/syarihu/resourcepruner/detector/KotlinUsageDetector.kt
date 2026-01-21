@@ -103,9 +103,52 @@ class KotlinUsageDetector : UsageDetector {
           )
         }
       }
+
+      // Find R.styleable.StyleableName_attrName references
+      // Extract the attr name (after the last underscore that follows the styleable name)
+      // e.g., R.styleable.CustomView_customBackground -> customBackground
+      R_STYLEABLE_PATTERN.findAll(cleanedLine).forEach { match ->
+        val fullName = match.groupValues[1] // e.g., "CustomView_customBackground"
+        val attrName = extractAttrNameFromStyleable(fullName)
+        if (attrName != null) {
+          val column = match.range.first + 1
+          references.add(
+            ResourceReference(
+              resourceName = attrName,
+              resourceType = ResourceType.Value.Attr,
+              location = ReferenceLocation(
+                filePath = file,
+                line = lineNumber,
+                column = column,
+                pattern = if (file.extension == "java") {
+                  ReferencePattern.JAVA_R_CLASS
+                } else {
+                  ReferencePattern.KOTLIN_R_CLASS
+                },
+              ),
+            ),
+          )
+        }
+      }
     }
 
     return references
+  }
+
+  /**
+   * Extracts the attr name from a styleable reference.
+   *
+   * R.styleable references have the format: StyleableName_attrName
+   * e.g., CustomView_customBackground -> customBackground
+   *
+   * @return The attr name, or null if the format is invalid
+   */
+  private fun extractAttrNameFromStyleable(fullName: String): String? {
+    val underscoreIndex = fullName.indexOf('_')
+    if (underscoreIndex == -1 || underscoreIndex == fullName.length - 1) {
+      return null
+    }
+    return fullName.substring(underscoreIndex + 1)
   }
 
   /**
@@ -169,6 +212,19 @@ class KotlinUsageDetector : UsageDetector {
      */
     private val R_CLASS_IMPORT_ALIAS_PATTERN = Regex(
       """import\s+[\w.]+\.R\s+as\s+(\w+)""",
+    )
+
+    /**
+     * Pattern to match R.styleable references.
+     *
+     * Matches patterns like:
+     * - R.styleable.CustomView_customBackground
+     * - R.styleable.MyView_customAttr
+     *
+     * Group 1: Full styleable name (StyleableName_attrName)
+     */
+    private val R_STYLEABLE_PATTERN = Regex(
+      """R\.styleable\.(\w+)""",
     )
   }
 }

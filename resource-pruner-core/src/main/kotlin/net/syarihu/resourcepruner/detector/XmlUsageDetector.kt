@@ -120,11 +120,78 @@ class XmlUsageDetector : UsageDetector {
         }
       }
 
+      // Find ?attr/name references (theme attribute references)
+      THEME_ATTR_REFERENCE_PATTERN.findAll(lineWithoutTools).forEach { match ->
+        val resourceName = match.groupValues[1]
+        val column = match.range.first + 1
+        references.add(
+          ResourceReference(
+            resourceName = resourceName,
+            resourceType = ResourceType.Value.Attr,
+            location = ReferenceLocation(
+              filePath = file,
+              line = lineNumber,
+              column = column,
+              pattern = ReferencePattern.XML_REFERENCE,
+            ),
+          ),
+        )
+      }
+
+      // Find style item attribute references
+      // e.g., <item name="customIndicatorColor">@color/primary</item>
+      // The "customIndicatorColor" is a reference to an attr resource
+      STYLE_ITEM_PATTERN.findAll(lineWithoutTools).forEach { match ->
+        val attrName = match.groupValues[1]
+        // Skip android: prefixed attributes (framework attributes)
+        if (!attrName.startsWith("android:")) {
+          val column = match.range.first + 1
+          references.add(
+            ResourceReference(
+              resourceName = attrName,
+              resourceType = ResourceType.Value.Attr,
+              location = ReferenceLocation(
+                filePath = file,
+                line = lineNumber,
+                column = column,
+                pattern = ReferencePattern.XML_REFERENCE,
+              ),
+            ),
+          )
+        }
+      }
+
+      // Find attr references inside declare-styleable
+      // e.g., <attr name="customBackground"/> or <attr name="customBackground" format="reference"/>
+      // This is a reference to a globally defined attr resource
+      DECLARE_STYLEABLE_ATTR_PATTERN.findAll(lineWithoutTools).forEach { match ->
+        val attrName = match.groupValues[1]
+        // Skip android: prefixed attributes (framework attributes)
+        if (!attrName.startsWith("android:")) {
+          val column = match.range.first + 1
+          references.add(
+            ResourceReference(
+              resourceName = attrName,
+              resourceType = ResourceType.Value.Attr,
+              location = ReferenceLocation(
+                filePath = file,
+                line = lineNumber,
+                column = column,
+                pattern = ReferencePattern.XML_REFERENCE,
+              ),
+            ),
+          )
+        }
+      }
+
       // Find style parent references (parent="@style/xxx" or parent="Theme.xxx")
       STYLE_PARENT_PATTERN.findAll(lineWithoutTools).forEach { match ->
         val parentName = match.groupValues[1]
         // Only add if it's a local style reference (not a framework style)
-        if (!parentName.startsWith("android:") && !parentName.startsWith("Theme.") && !parentName.contains(".")) {
+        // User-defined styles can contain dots (e.g., "AppTheme.Base", "TextStyle.Body")
+        // so we should not exclude them based on containing dots.
+        // Only exclude framework/library styles that start with known prefixes.
+        if (!parentName.startsWith("android:") && !isFrameworkStyleName(parentName)) {
           val column = match.range.first + 1
           references.add(
             ResourceReference(
@@ -147,7 +214,8 @@ class XmlUsageDetector : UsageDetector {
       STYLE_NAME_PATTERN.findAll(lineWithoutTools).forEach { match ->
         val styleName = match.groupValues[1]
         // Only process if the style name contains a dot (indicating inheritance)
-        if (styleName.contains(".") && !styleName.startsWith("android:") && !styleName.startsWith("Theme.")) {
+        // and it's not a framework style
+        if (styleName.contains(".") && !styleName.startsWith("android:") && !isFrameworkStyleName(styleName)) {
           val column = match.range.first + 1
           // Extract all parent style names from the dot notation
           val parentStyleNames = extractParentStyleNames(styleName)
@@ -178,6 +246,32 @@ class XmlUsageDetector : UsageDetector {
    */
   private fun removeToolsAttributes(line: String): String {
     return TOOLS_ATTRIBUTE_PATTERN.replace(line, "")
+  }
+
+  /**
+   * Checks if the style name is a known framework or library style.
+   * These styles are not defined in the user's project and should not be tracked as references.
+   */
+  private fun isFrameworkStyleName(styleName: String): Boolean {
+    // Known framework/library style prefixes
+    // Known framework/library style prefixes:
+    // Theme. - Android themes (Theme.Material, Theme.AppCompat)
+    // Widget. - Android widgets (Widget.AppCompat.Button)
+    // TextAppearance. - Text appearance styles
+    // Base. - Base styles from libraries
+    // Platform. - Platform styles
+    // Animation. - Animation styles
+    // ThemeOverlay. - Theme overlays
+    val frameworkPrefixes = listOf(
+      "Theme.",
+      "Widget.",
+      "TextAppearance.",
+      "Base.",
+      "Platform.",
+      "Animation.",
+      "ThemeOverlay.",
+    )
+    return frameworkPrefixes.any { styleName.startsWith(it) }
   }
 
   /**
@@ -245,6 +339,55 @@ class XmlUsageDetector : UsageDetector {
      */
     private val RESOURCE_REFERENCE_PATTERN = Regex(
       """@\+?(\w+)/([\w.]+)""",
+    )
+
+    /**
+     * Pattern to match theme attribute references.
+     *
+     * Matches patterns like:
+     * - ?attr/colorPrimary
+     * - ?android:attr/textColorPrimary (excluded by filter)
+     * - ?attr/customIndicatorColor (library attributes)
+     *
+     * This is different from @attr/ references and uses the ? prefix
+     * which is Android's way to reference theme attributes.
+     *
+     * Group 1: Attribute name
+     */
+    private val THEME_ATTR_REFERENCE_PATTERN = Regex(
+      """\?attr/([\w.]+)""",
+    )
+
+    /**
+     * Pattern to match style item attribute references.
+     *
+     * Matches patterns like:
+     * - <item name="colorPrimary">
+     * - <item name="customIndicatorColor">
+     * - <item name="android:textColor"> (filtered out)
+     *
+     * The name attribute in <item> tags refers to an attr resource.
+     *
+     * Group 1: Attribute name
+     */
+    private val STYLE_ITEM_PATTERN = Regex(
+      """<item\s+name\s*=\s*"([^"]+)"""",
+    )
+
+    /**
+     * Pattern to match attr references inside declare-styleable.
+     *
+     * Matches patterns like:
+     * - <attr name="customBackground"/>
+     * - <attr name="customBackground" format="reference"/>
+     * - <attr name="android:textColor"/> (filtered out)
+     *
+     * Inside <declare-styleable>, <attr> tags reference globally defined attrs.
+     *
+     * Group 1: Attribute name
+     */
+    private val DECLARE_STYLEABLE_ATTR_PATTERN = Regex(
+      """<attr\s+name\s*=\s*"([^"]+)"""",
     )
 
     /**
