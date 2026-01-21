@@ -56,12 +56,31 @@ class FileResourceCollector : ResourceCollector {
         .toList()
         .map { file ->
           DetectedResource(
-            name = file.nameWithoutExtension,
+            name = extractResourceName(file),
             type = resourceType,
             location = ResourceLocation.FileLocation(file),
             qualifiers = qualifiers,
           )
         }
+    }
+  }
+
+  /**
+   * Extracts the resource name from a file.
+   *
+   * Handles 9-patch images by removing the .9 suffix.
+   * For example:
+   * - "icon.png" -> "icon"
+   * - "icon.9.png" -> "icon" (not "icon.9")
+   * - "bg_button.xml" -> "bg_button"
+   */
+  private fun extractResourceName(file: Path): String {
+    val nameWithoutExt = file.nameWithoutExtension
+    // Handle 9-patch images: remove the .9 suffix
+    return if (nameWithoutExt.endsWith(".9")) {
+      nameWithoutExt.dropLast(2)
+    } else {
+      nameWithoutExt
     }
   }
 
@@ -107,8 +126,8 @@ class FileResourceCollector : ResourceCollector {
   }
 
   companion object {
-    // Note: 9-patch images (.9.png) have extension "png" and are handled normally.
-    // The nameWithoutExtension includes the ".9" suffix.
+    // Note: 9-patch images (.9.png) have extension "png".
+    // The .9 suffix is removed by extractResourceName() to get the correct resource name.
     private val VALID_EXTENSIONS = setOf(
       "xml",
       "png",
