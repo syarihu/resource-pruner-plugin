@@ -10,6 +10,7 @@ import app.cash.paraphrase.getString
 import net.syarihu.resourcepruner.example.databinding.ActivityMainBinding
 import net.syarihu.resourcepruner.example.databinding.ItemViewbindingOnlyBinding
 import net.syarihu.resourcepruner.examplelib.R as LibR
+import net.syarihu.resourcepruner.examplelib.R as R_exampleLib
 import net.syarihu.resourcepruner.examplelib.databinding.LayoutLibUsedBinding
 
 /**
@@ -25,8 +26,9 @@ import net.syarihu.resourcepruner.examplelib.databinding.LayoutLibUsedBinding
  * - R.drawable.ic_used_icon (directly)
  *
  * Library resources used (from example-lib module):
- * - R.string.lib_used_string (directly)
- * - R.drawable.ic_lib_used_icon (directly)
+ * - R.string.lib_used_string (directly via LibR alias)
+ * - R.string.lib_common_message (directly via R_exampleLib alias - underscore style)
+ * - R.drawable.ic_lib_used_icon (directly via LibR alias)
  * - R.layout.layout_lib_used (via ViewBinding)
  *
  * Resources NOT used (should be pruned):
@@ -69,6 +71,11 @@ class MainActivity : AppCompatActivity() {
     // These usages should prevent the library resources from being pruned
     val libMessage = getString(LibR.string.lib_used_string)
     Log.d("MainActivity", "Library message: $libMessage")
+
+    // Use resources from example-lib module with underscore-style alias (R_exampleLib)
+    // This demonstrates that import aliases with underscores are correctly detected
+    val libCommonMessage = getString(R_exampleLib.string.lib_common_message)
+    Log.d("MainActivity", "Library common message: $libCommonMessage")
 
     // Use library drawable
     binding.imageView.setImageResource(LibR.drawable.ic_lib_used_icon)
