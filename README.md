@@ -2,6 +2,8 @@
 
 <img alt="license-scribe-plugin-logo" src="docs/images/resource-pruner-plugin-logo.png" />
 
+[![Build and Test](https://github.com/syarihu/resource-pruner-plugin/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/syarihu/resource-pruner-plugin/actions/workflows/build-and-test.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/net.syarihu.resourcepruner/resource-pruner-gradle-plugin)](https://central.sonatype.com/namespace/net.syarihu.resourcepruner)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 A Gradle plugin that acts as your project's gardener, carefully pruning unused resources from your Android codebase to keep it clean and maintainable.
@@ -40,12 +42,50 @@ A Gradle plugin that acts as your project's gardener, carefully pruning unused r
 
 ## Installation
 
-Add the plugin to your Android module's `build.gradle.kts`:
+Add the following to your project:
+
+### settings.gradle.kts
+
+```kotlin
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        google()
+    }
+}
+```
+
+### build.gradle.kts (app or library module)
 
 ```kotlin
 plugins {
     id("com.android.application") // or com.android.library
-    id("net.syarihu.resource-pruner") version "0.1.0"
+    id("net.syarihu.resource-pruner") version "<latest-version>"
+}
+```
+
+### For Local Development
+
+#### settings.gradle.kts
+
+```kotlin
+pluginManagement {
+    repositories {
+        mavenLocal()  // For local development
+        gradlePluginPortal()
+        mavenCentral()
+        google()
+    }
+}
+```
+
+#### build.gradle.kts (app or library module)
+
+```kotlin
+plugins {
+    id("com.android.application") // or com.android.library
+    id("net.syarihu.resource-pruner") version "<latest-version>-SNAPSHOT"
 }
 ```
 
