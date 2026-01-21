@@ -12,6 +12,7 @@ A Gradle plugin that acts as your project's gardener, carefully pruning unused r
 
 - **Accurate Detection**: Detects resource usage through multiple patterns:
   - Direct R class references (`R.drawable.icon`, `R.string.app_name`)
+  - Import aliases (`import ...R as LibR` → `LibR.drawable.icon`)
   - XML resource references (`@string/app_name`, `@drawable/icon`)
   - Implicit style parent references via dot notation (`TextStyle.Body` inherits from `TextStyle`)
   - ViewBinding usage (`ActivityMainBinding`, `FragmentHomeBinding`)
@@ -185,16 +186,93 @@ resourcePruner {
 
 For large multi-module projects, you can centralize the plugin configuration using Gradle's [convention plugins](https://docs.gradle.org/current/userguide/sharing_build_logic_between_subprojects.html) pattern.
 
-**1. Add the plugin dependency to your convention module (`build-logic/convention/build.gradle.kts`):**
+> **Note for Gradle 8.x users:** This plugin is compiled with Kotlin 2.2.x, while Gradle 8.x uses Kotlin 2.0.x internally. If you encounter a `Module was compiled with an incompatible version of Kotlin` error, add the following to your `build-logic/build.gradle.kts`:
+>
+> ```kotlin
+> tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+>     compilerOptions {
+>         freeCompilerArgs.add("-Xskip-metadata-version-check")
+>     }
+> }
+> ```
+>
+> This is not needed when using Gradle 9.x or when applying the plugin directly via `plugins { }` block without convention plugins.
+
+**1. Add the plugin to your version catalog (`gradle/libs.versions.toml`):**
+
+```toml
+[versions]
+resource-pruner = "<latest-version>"
+
+[libraries]
+resource-pruner-gradle-plugin = { module = "net.syarihu.resourcepruner:resource-pruner-gradle-plugin", version.ref = "resource-pruner" }
+```
+
+**2. Register the plugin in your root `settings.gradle.kts`:**
 
 ```kotlin
-dependencies {
-    compileOnly(libs.android.gradlePlugin)
-    compileOnly(libs.resourcePrunerGradle)
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        google()
+    }
+    plugins {
+        id("net.syarihu.resource-pruner") version "<latest-version>"
+    }
 }
 ```
 
-**2. Create a configuration function (`ResourcePrunerConfiguration.kt`):**
+**3. Configure `build-logic/settings.gradle.kts`:**
+
+```kotlin
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        google()
+    }
+    plugins {
+        id("net.syarihu.resource-pruner") version "<latest-version>"
+    }
+}
+
+dependencyResolutionManagement {
+    versionCatalogs {
+        create("libs") {
+            from(files("../gradle/libs.versions.toml"))
+        }
+    }
+}
+```
+
+**4. Add the plugin dependency to `build-logic/build.gradle.kts`:**
+
+```kotlin
+plugins {
+    `kotlin-dsl`
+}
+
+// For Gradle 8.x only - see note above
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        freeCompilerArgs.add("-Xskip-metadata-version-check")
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+    gradlePluginPortal()
+}
+
+dependencies {
+    implementation(libs.android.gradlePlugin)
+    implementation(libs.resource.pruner.gradle.plugin)
+}
+```
+
+**5. Create a configuration function (`ResourcePrunerConfiguration.kt`):**
 
 ```kotlin
 import net.syarihu.resourcepruner.gradle.ResourcePrunerExtension
@@ -211,7 +289,29 @@ internal fun Project.configureResourcePruner() {
 }
 ```
 
-**3. Apply in your convention plugins:**
+**6. Apply in your convention plugins (precompiled script plugin example):**
+
+```kotlin
+// convention.android.app.gradle.kts
+plugins {
+    id("com.android.application")
+    id("net.syarihu.resource-pruner")
+}
+
+configureResourcePruner()
+```
+
+```kotlin
+// convention.android.library.gradle.kts
+plugins {
+    id("com.android.library")
+    id("net.syarihu.resource-pruner")
+}
+
+configureResourcePruner()
+```
+
+Or if you prefer class-based convention plugins:
 
 ```kotlin
 // AndroidApplicationConventionPlugin.kt
@@ -219,17 +319,6 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         with(target) {
             pluginManager.apply("com.android.application")
-            pluginManager.apply("net.syarihu.resource-pruner")
-            configureResourcePruner()
-        }
-    }
-}
-
-// AndroidLibraryConventionPlugin.kt
-class AndroidLibraryConventionPlugin : Plugin<Project> {
-    override fun apply(target: Project) {
-        with(target) {
-            pluginManager.apply("com.android.library")
             pluginManager.apply("net.syarihu.resource-pruner")
             configureResourcePruner()
         }
