@@ -254,6 +254,16 @@ When you run `./gradlew :common-ui:analyzeResourcesDebug`, the plugin will:
 
 This prevents false positives where library resources appear unused because they're only referenced in app modules.
 
+For libraries used by **multiple modules**, the plugin scans all of them to ensure resources are only pruned when truly unused:
+
+```
+project-root/
+├── app-a/                  # Uses resource_a from common-ui
+├── app-b/                  # Uses resource_b from common-ui
+└── common-ui/              # Has resource_a, resource_b, resource_c
+                            # → Only resource_c will be pruned
+```
+
 If your app module also has its own resources to manage, you can apply the plugin there too:
 
 ```kotlin
