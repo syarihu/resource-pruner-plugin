@@ -320,6 +320,85 @@ class KotlinUsageDetectorTest : DescribeSpec({
           tempDir.toFile().deleteRecursively()
         }
       }
+
+      it("should detect resource references with Japanese names") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val kotlinFile = tempDir.resolve("Test.kt")
+          kotlinFile.writeText(
+            """
+            package com.example
+
+            class Test {
+                fun getArray() {
+                    val array = resources.getStringArray(R.array.ほげほげ)
+                    val string = getString(R.string.日本語リソース名)
+                }
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 2
+          references.map { it.resourceName } shouldContainExactlyInAnyOrder listOf("ほげほげ", "日本語リソース名")
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect resource references inside string templates") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val kotlinFile = tempDir.resolve("Composable.kt")
+          kotlinFile.writeText(
+            """
+            package com.example
+
+            @Composable
+            fun MyComposable() {
+                Text(
+                    text = "${"$"}{stringResource(id = R.string.xxxx_text)} ${"$"}{stringResource(id = R.string.hoge_fuga_piyo)}",
+                )
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 2
+          references.map { it.resourceName } shouldContainExactlyInAnyOrder listOf("xxxx_text", "hoge_fuga_piyo")
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect resource references in multi-line string templates") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val kotlinFile = tempDir.resolve("Composable.kt")
+          kotlinFile.writeText(
+            """
+            package com.example
+
+            @Composable
+            fun MyComposable() {
+                ComposableFun(
+                    text =
+                        "${"$"}{stringResource(id = R.string.first_resource)} ${"$"}{stringResource(id = R.string.second_resource)}",
+                )
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 2
+          references.map { it.resourceName } shouldContainExactlyInAnyOrder listOf("first_resource", "second_resource")
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
     }
   }
 })

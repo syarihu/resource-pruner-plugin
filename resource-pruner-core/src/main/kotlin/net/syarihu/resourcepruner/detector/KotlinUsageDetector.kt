@@ -180,11 +180,24 @@ class KotlinUsageDetector : UsageDetector {
     val escapedAliases = aliases.map { Regex.escape(it) }
     val allIdentifiers = listOf("R") + escapedAliases
     val identifierPattern = allIdentifiers.joinToString("|")
-    return Regex("""(?:$identifierPattern)\.(\w+)\.(\w+)""")
+    return Regex("""(?:$identifierPattern)\.(\w+)\.(${RESOURCE_NAME_PATTERN})""")
   }
 
   companion object {
     private val SUPPORTED_EXTENSIONS = setOf("kt", "java")
+
+    /**
+     * Pattern for valid Android resource names.
+     *
+     * Android resource names can contain:
+     * - ASCII letters (a-z, A-Z)
+     * - Digits (0-9)
+     * - Underscores (_)
+     * - Unicode letters (Japanese, etc.) - though discouraged, they are supported
+     *
+     * This pattern uses [\p{L}\p{N}_]+ to match Unicode letters and numbers.
+     */
+    private const val RESOURCE_NAME_PATTERN = """[\p{L}\p{N}_]+"""
 
     /**
      * Pattern to match R class resource references.
@@ -193,12 +206,13 @@ class KotlinUsageDetector : UsageDetector {
      * - R.drawable.icon
      * - R.string.app_name
      * - R.layout.activity_main
+     * - R.array.ほげほげ (Unicode resource names)
      *
      * Group 1: Resource type (drawable, string, layout, etc.)
-     * Group 2: Resource name
+     * Group 2: Resource name (may contain Unicode characters)
      */
     private val R_CLASS_PATTERN = Regex(
-      """R\.(\w+)\.(\w+)""",
+      """R\.(\w+)\.($RESOURCE_NAME_PATTERN)""",
     )
 
     /**
@@ -224,7 +238,7 @@ class KotlinUsageDetector : UsageDetector {
      * Group 1: Full styleable name (StyleableName_attrName)
      */
     private val R_STYLEABLE_PATTERN = Regex(
-      """R\.styleable\.(\w+)""",
+      """R\.styleable\.($RESOURCE_NAME_PATTERN)""",
     )
   }
 }
