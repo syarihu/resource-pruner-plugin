@@ -171,6 +171,152 @@ class DefaultResourcePrunerTest : DescribeSpec({
           tempDir.toFile().deleteRecursively()
         }
       }
+
+      it("should only remove resources of target types when specified") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val drawableFile = tempDir.resolve("drawable/icon.png")
+          val stringsFile = tempDir.resolve("values/strings.xml")
+          drawableFile.parent.createDirectories()
+          stringsFile.parent.createDirectories()
+          drawableFile.writeText("")
+          stringsFile.writeText("")
+
+          val resources = listOf(
+            DetectedResource(
+              name = "icon",
+              type = ResourceType.File.Drawable,
+              location = ResourceLocation.FileLocation(drawableFile),
+            ),
+            DetectedResource(
+              name = "unused_string",
+              type = ResourceType.Value.StringRes,
+              location = ResourceLocation.ValueLocation(
+                filePath = stringsFile,
+                startLine = 1,
+                endLine = 1,
+                elementXml = """<string name="unused_string">Unused</string>""",
+              ),
+            ),
+          )
+
+          val references = emptySet<ResourceReference>()
+          val excludePatterns = emptyList<Regex>()
+          val targetResourceTypes = setOf("drawable")
+
+          val analysis = pruner.analyze(
+            resources,
+            references,
+            excludePatterns,
+            targetResourceTypes,
+          )
+
+          analysis.toBeRemoved shouldHaveSize 1
+          analysis.toBeRemoved.first().name shouldBe "icon"
+          analysis.toBePreserved shouldHaveSize 1
+          analysis.toBePreserved.first().name shouldBe "unused_string"
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should preserve resources of excluded types") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val drawableFile = tempDir.resolve("drawable/icon.png")
+          val menuFile = tempDir.resolve("menu/main_menu.xml")
+          drawableFile.parent.createDirectories()
+          menuFile.parent.createDirectories()
+          drawableFile.writeText("")
+          menuFile.writeText("")
+
+          val resources = listOf(
+            DetectedResource(
+              name = "icon",
+              type = ResourceType.File.Drawable,
+              location = ResourceLocation.FileLocation(drawableFile),
+            ),
+            DetectedResource(
+              name = "main_menu",
+              type = ResourceType.File.Menu,
+              location = ResourceLocation.FileLocation(menuFile),
+            ),
+          )
+
+          val references = emptySet<ResourceReference>()
+          val excludePatterns = emptyList<Regex>()
+          val excludeResourceTypes = setOf("menu")
+
+          val analysis = pruner.analyze(
+            resources,
+            references,
+            excludePatterns,
+            emptySet(),
+            excludeResourceTypes,
+          )
+
+          analysis.toBeRemoved shouldHaveSize 1
+          analysis.toBeRemoved.first().name shouldBe "icon"
+          analysis.toBePreserved shouldHaveSize 1
+          analysis.toBePreserved.first().name shouldBe "main_menu"
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should apply excludeResourceTypes after targetResourceTypes") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val drawableFile = tempDir.resolve("drawable/icon.png")
+          val layoutFile = tempDir.resolve("layout/main.xml")
+          val menuFile = tempDir.resolve("menu/main_menu.xml")
+          drawableFile.parent.createDirectories()
+          layoutFile.parent.createDirectories()
+          menuFile.parent.createDirectories()
+          drawableFile.writeText("")
+          layoutFile.writeText("")
+          menuFile.writeText("")
+
+          val resources = listOf(
+            DetectedResource(
+              name = "icon",
+              type = ResourceType.File.Drawable,
+              location = ResourceLocation.FileLocation(drawableFile),
+            ),
+            DetectedResource(
+              name = "main",
+              type = ResourceType.File.Layout,
+              location = ResourceLocation.FileLocation(layoutFile),
+            ),
+            DetectedResource(
+              name = "main_menu",
+              type = ResourceType.File.Menu,
+              location = ResourceLocation.FileLocation(menuFile),
+            ),
+          )
+
+          val references = emptySet<ResourceReference>()
+          val excludePatterns = emptyList<Regex>()
+          val targetResourceTypes = setOf("drawable", "layout", "menu")
+          val excludeResourceTypes = setOf("menu")
+
+          val analysis = pruner.analyze(
+            resources,
+            references,
+            excludePatterns,
+            targetResourceTypes,
+            excludeResourceTypes,
+          )
+
+          // Only drawable and layout should be removed; menu is excluded
+          analysis.toBeRemoved shouldHaveSize 2
+          analysis.toBeRemoved.map { it.name }.toSet() shouldBe setOf("icon", "main")
+          analysis.toBePreserved shouldHaveSize 1
+          analysis.toBePreserved.first().name shouldBe "main_menu"
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
     }
 
     describe("execute") {

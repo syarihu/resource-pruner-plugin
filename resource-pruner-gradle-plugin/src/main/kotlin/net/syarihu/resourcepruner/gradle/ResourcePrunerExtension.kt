@@ -50,6 +50,22 @@ abstract class ResourcePrunerExtension {
   abstract val targetResourceTypes: SetProperty<String>
 
   /**
+   * Resource types to exclude from pruning.
+   *
+   * Resources of these types will be preserved even if unused.
+   * This is applied after [targetResourceTypes] filtering.
+   *
+   * Valid values: "drawable", "layout", "menu", "mipmap", "animator", "anim", "color",
+   *               "string", "dimen", "style", "bool", "integer", "array", "attr", "plurals"
+   *
+   * Example:
+   * ```kotlin
+   * excludeResourceTypes.addAll("menu") // Preserve all menu resources
+   * ```
+   */
+  abstract val excludeResourceTypes: SetProperty<String>
+
+  /**
    * Source sets to scan for resource usage.
    *
    * Defaults to ["main"] if not specified.

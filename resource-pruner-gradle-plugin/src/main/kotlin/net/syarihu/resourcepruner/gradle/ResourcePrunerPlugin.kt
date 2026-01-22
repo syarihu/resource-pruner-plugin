@@ -41,6 +41,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
     extension.sourceSets.convention(setOf("main"))
     extension.excludeResourceNamePatterns.convention(emptyList())
     extension.targetResourceTypes.convention(emptySet())
+    extension.excludeResourceTypes.convention(emptySet())
     extension.scanDependentProjects.convention(true)
 
     // Register tasks for Android Application projects
@@ -93,6 +94,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
         task.description = "Preview unused resources for $variantName variant"
         task.excludeResourceNamePatterns.set(extension.excludeResourceNamePatterns)
         task.targetResourceTypes.set(extension.targetResourceTypes)
+        task.excludeResourceTypes.set(extension.excludeResourceTypes)
         task.sourceDirectories.from(sourceDirectories)
         task.sourceDirectories.from(dependentProjectSources)
         task.resDirectories.from(resDirectories)
@@ -110,6 +112,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
         task.description = "Prune unused resources for $variantName variant"
         task.excludeResourceNamePatterns.set(extension.excludeResourceNamePatterns)
         task.targetResourceTypes.set(extension.targetResourceTypes)
+        task.excludeResourceTypes.set(extension.excludeResourceTypes)
         task.sourceDirectories.from(sourceDirectories)
         task.sourceDirectories.from(dependentProjectSources)
         task.resDirectories.from(resDirectories)

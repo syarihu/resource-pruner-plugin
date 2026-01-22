@@ -14,12 +14,16 @@ interface ResourcePruner {
    * @param detectedResources All resources detected in the project
    * @param references All resource references found in the codebase
    * @param excludePatterns Patterns for resources to exclude from pruning
+   * @param targetResourceTypes Resource types to target (empty = all types)
+   * @param excludeResourceTypes Resource types to exclude from pruning
    * @return Analysis result containing resources to remove and preserve
    */
   fun analyze(
     detectedResources: List<DetectedResource>,
     references: Set<ResourceReference>,
     excludePatterns: List<Regex>,
+    targetResourceTypes: Set<String> = emptySet(),
+    excludeResourceTypes: Set<String> = emptySet(),
   ): PruneAnalysis
 
   /**

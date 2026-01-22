@@ -22,6 +22,8 @@ class DefaultResourcePruner(
     detectedResources: List<DetectedResource>,
     references: Set<ResourceReference>,
     excludePatterns: List<Regex>,
+    targetResourceTypes: Set<String>,
+    excludeResourceTypes: Set<String>,
   ): PruneAnalysis {
     // Build a set of referenced resource names for quick lookup
     val referencedResources = references
@@ -33,8 +35,19 @@ class DefaultResourcePruner(
 
     for (resource in detectedResources) {
       val resourceKey = ResourceKey(resource.name, resource.type.typeName)
+      val typeName = resource.type.typeName
 
       when {
+        // Check if the resource type is excluded
+        excludeResourceTypes.contains(typeName) -> {
+          toBePreserved.add(resource)
+        }
+
+        // Check if the resource type is not in target types (if target types are specified)
+        targetResourceTypes.isNotEmpty() && !targetResourceTypes.contains(typeName) -> {
+          toBePreserved.add(resource)
+        }
+
         // Check if the resource matches any exclude pattern
         excludePatterns.any { pattern -> pattern.matches(resource.name) } -> {
           toBePreserved.add(resource)
