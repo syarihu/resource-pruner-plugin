@@ -251,27 +251,68 @@ class XmlUsageDetector : UsageDetector {
   /**
    * Checks if the style name is a known framework or library style.
    * These styles are not defined in the user's project and should not be tracked as references.
+   *
+   * This method uses more specific matching to avoid excluding user-defined styles
+   * that happen to start with common prefixes (e.g., Theme.Example.Custom should not
+   * be excluded just because it starts with "Theme.").
    */
   private fun isFrameworkStyleName(styleName: String): Boolean {
-    // Known framework/library style prefixes
-    // Known framework/library style prefixes:
-    // Theme. - Android themes (Theme.Material, Theme.AppCompat)
-    // Widget. - Android widgets (Widget.AppCompat.Button)
-    // TextAppearance. - Text appearance styles
-    // Base. - Base styles from libraries
-    // Platform. - Platform styles
-    // Animation. - Animation styles
-    // ThemeOverlay. - Theme overlays
-    val frameworkPrefixes = listOf(
-      "Theme.",
-      "Widget.",
-      "TextAppearance.",
-      "Base.",
+    // Known framework/library style patterns (more specific than just prefixes):
+    // - Theme.Material*, Theme.AppCompat*, Theme.Holo*, Theme.DeviceDefault* (Android/AppCompat themes)
+    // - Widget.Material*, Widget.AppCompat*, Widget.Holo*, Widget.DeviceDefault* (Android/AppCompat widgets)
+    // - TextAppearance.Material*, TextAppearance.AppCompat* (Text appearance styles)
+    // - Base.Theme.*, Base.Widget.*, Base.TextAppearance.* (Base styles from libraries)
+    // - Platform.* (Platform styles)
+    // - Animation.* (Animation styles)
+    // - ThemeOverlay.Material*, ThemeOverlay.AppCompat* (Theme overlays)
+    // - ShapeAppearance.Material* (Material shape appearances)
+    val frameworkPatterns = listOf(
+      // Theme patterns
+      "Theme.Material",
+      "Theme.AppCompat",
+      "Theme.Holo",
+      "Theme.DeviceDefault",
+      "Theme.Leanback",
+      "Theme.Design",
+      // Widget patterns
+      "Widget.Material",
+      "Widget.AppCompat",
+      "Widget.Holo",
+      "Widget.DeviceDefault",
+      "Widget.Design",
+      "Widget.Leanback",
+      // TextAppearance patterns
+      "TextAppearance.Material",
+      "TextAppearance.AppCompat",
+      "TextAppearance.Design",
+      "TextAppearance.Compat",
+      // Base patterns
+      "Base.Theme",
+      "Base.Widget",
+      "Base.TextAppearance",
+      "Base.V",
+      "Base.CardView",
+      // Other patterns
       "Platform.",
       "Animation.",
-      "ThemeOverlay.",
+      "ThemeOverlay.Material",
+      "ThemeOverlay.AppCompat",
+      "ThemeOverlay.Design",
+      "ShapeAppearance.Material",
+      // MaterialComponents patterns
+      "Theme.MaterialComponents",
+      "Widget.MaterialComponents",
+      "TextAppearance.MaterialComponents",
+      "ShapeAppearance.MaterialComponents",
+      "ThemeOverlay.MaterialComponents",
+      // Material3 patterns
+      "Theme.Material3",
+      "Widget.Material3",
+      "TextAppearance.Material3",
+      "ShapeAppearance.Material3",
+      "ThemeOverlay.Material3",
     )
-    return frameworkPrefixes.any { styleName.startsWith(it) }
+    return frameworkPatterns.any { styleName.startsWith(it) }
   }
 
   /**

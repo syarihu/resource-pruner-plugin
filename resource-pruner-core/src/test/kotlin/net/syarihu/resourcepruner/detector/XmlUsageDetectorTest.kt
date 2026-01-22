@@ -523,6 +523,49 @@ class XmlUsageDetectorTest : DescribeSpec({
           tempDir.toFile().deleteRecursively()
         }
       }
+
+      it("should detect user-defined Theme style parents") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val valuesDir = tempDir.resolve("values").createDirectories()
+          valuesDir.resolve("styles.xml").writeText(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <resources>
+                <style name="Theme.Example.Hoge.Custom" parent="Theme.MaterialComponents.Light.NoActionBar" />
+                <style name="Theme.Example.Hoge.Custom.Deprecated" parent="Theme.Example.Hoge.Custom" />
+            </resources>
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(emptyList(), listOf(tempDir))
+
+          val styleRefs = references.filter { it.resourceType == ResourceType.Value.Style }
+          // Should detect:
+          // From Theme.Example.Hoge.Custom style name (dot notation):
+          // - Theme.Example.Hoge, Theme.Example, Theme
+          // From Theme.Example.Hoge.Custom.Deprecated style name (dot notation):
+          // - Theme.Example.Hoge.Custom, Theme.Example.Hoge, Theme.Example, Theme
+          // From parent="Theme.Example.Hoge.Custom":
+          // - Theme.Example.Hoge.Custom
+          // (Framework parent Theme.MaterialComponents.Light.NoActionBar should NOT be detected)
+          styleRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf(
+            // From dot notation of Theme.Example.Hoge.Custom
+            "Theme.Example.Hoge",
+            "Theme.Example",
+            "Theme",
+            // From dot notation of Theme.Example.Hoge.Custom.Deprecated
+            "Theme.Example.Hoge.Custom",
+            "Theme.Example.Hoge",
+            "Theme.Example",
+            "Theme",
+            // From parent="Theme.Example.Hoge.Custom"
+            "Theme.Example.Hoge.Custom",
+          )
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
     }
   }
 })
