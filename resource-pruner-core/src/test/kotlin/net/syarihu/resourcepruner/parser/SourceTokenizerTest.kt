@@ -122,6 +122,68 @@ class SourceTokenizerTest : DescribeSpec({
         result shouldContain "R.drawable.icon"
         result shouldContain "R.string.hello"
       }
+
+      it("should preserve resource references inside string templates") {
+        val source = """
+          val text = "${"$"}{stringResource(R.string.hello_world)}"
+          val combined = "${"$"}{getString(R.string.first)} ${"$"}{getString(R.string.second)}"
+        """.trimIndent()
+
+        val result = tokenizer.removeCommentsAndStrings(source)
+
+        result shouldContain "R.string.hello_world"
+        result shouldContain "R.string.first"
+        result shouldContain "R.string.second"
+      }
+
+      it("should preserve resource references in multi-line string templates") {
+        val source = """
+          ComposableFun(
+            text = "${"$"}{stringResource(id = R.string.xxxx_text)} ${"$"}{stringResource(id = R.string.hoge_fuga)}",
+          )
+        """.trimIndent()
+
+        val result = tokenizer.removeCommentsAndStrings(source)
+
+        result shouldContain "R.string.xxxx_text"
+        result shouldContain "R.string.hoge_fuga"
+      }
+
+      it("should preserve resource references in raw string templates") {
+        val source = """
+          val text = ${"\"\"\""}
+            ${"$"}{stringResource(R.string.in_raw_string)}
+          ${"\"\"\""}
+          val y = R.string.after_raw
+        """.trimIndent()
+
+        val result = tokenizer.removeCommentsAndStrings(source)
+
+        result shouldContain "R.string.in_raw_string"
+        result shouldContain "R.string.after_raw"
+      }
+
+      it("should handle nested template expressions") {
+        val source = """
+          val text = "${"$"}{if (condition) getString(R.string.yes) else getString(R.string.no)}"
+        """.trimIndent()
+
+        val result = tokenizer.removeCommentsAndStrings(source)
+
+        result shouldContain "R.string.yes"
+        result shouldContain "R.string.no"
+      }
+
+      it("should still hide string content outside of templates") {
+        val source = """
+          val text = "Hello R.string.should_be_hidden ${"$"}{R.string.should_be_visible}"
+        """.trimIndent()
+
+        val result = tokenizer.removeCommentsAndStrings(source)
+
+        result shouldNotContain "R.string.should_be_hidden"
+        result shouldContain "R.string.should_be_visible"
+      }
     }
   }
 })

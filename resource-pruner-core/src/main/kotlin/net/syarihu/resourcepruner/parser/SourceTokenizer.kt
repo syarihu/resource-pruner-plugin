@@ -19,6 +19,9 @@ class SourceTokenizer {
    *
    * with whitespace to preserve line numbers and positions.
    *
+   * For Kotlin string templates, expressions inside ${...} are preserved
+   * since they may contain resource references like R.string.xxx.
+   *
    * @param source The source code to process
    * @return The source code with comments and strings replaced by spaces
    */
@@ -28,23 +31,19 @@ class SourceTokenizer {
 
     while (i < source.length) {
       when {
-        // Raw string literal (triple-quoted)
+        // Raw string literal (triple-quoted) - may contain templates
         source.startsWith("\"\"\"", i) -> {
-          val endIndex = findRawStringEnd(source, i + 3)
-          appendSpaces(result, source, i, endIndex)
-          i = endIndex
+          i = processRawStringLiteral(source, i, result)
         }
 
-        // Regular string literal
+        // Regular string literal - may contain templates
         source[i] == '"' -> {
-          val endIndex = findStringEnd(source, i + 1, '"')
-          appendSpaces(result, source, i, endIndex)
-          i = endIndex
+          i = processStringLiteral(source, i, result)
         }
 
         // Character literal
         source[i] == '\'' -> {
-          val endIndex = findStringEnd(source, i + 1, '\'')
+          val endIndex = findCharLiteralEnd(source, i + 1)
           appendSpaces(result, source, i, endIndex)
           i = endIndex
         }
@@ -74,29 +73,174 @@ class SourceTokenizer {
   }
 
   /**
-   * Finds the end of a raw string literal (triple-quoted).
+   * Processes a regular string literal, preserving template expressions.
+   *
+   * @return The index after the string literal ends
    */
-  private fun findRawStringEnd(
+  private fun processStringLiteral(
     source: String,
     startIndex: Int,
+    result: StringBuilder,
   ): Int {
-    var i = startIndex
+    // Add space for opening quote
+    result.append(' ')
+    var i = startIndex + 1
+
     while (i < source.length) {
-      if (source.startsWith("\"\"\"", i)) {
-        return i + 3
+      when {
+        // Escaped character
+        source[i] == '\\' && i + 1 < source.length -> {
+          result.append(' ')
+          result.append(' ')
+          i += 2
+        }
+        // Template expression - preserve the expression content
+        source.startsWith("\${", i) -> {
+          result.append(' ') // for $
+          result.append(' ') // for {
+          i += 2
+          i = processTemplateExpression(source, i, result)
+        }
+        // Simple template variable ($identifier)
+        source[i] == '$' && i + 1 < source.length && isIdentifierStart(source[i + 1]) -> {
+          result.append(' ') // for $
+          i++
+          // Preserve the identifier
+          while (i < source.length && isIdentifierPart(source[i])) {
+            result.append(source[i])
+            i++
+          }
+        }
+        // End of string
+        source[i] == '"' -> {
+          result.append(' ')
+          return i + 1
+        }
+        // Newline - string literals can't span lines (except raw strings)
+        source[i] == '\n' -> {
+          result.append('\n')
+          return i + 1
+        }
+        // Regular character - replace with space
+        else -> {
+          result.append(' ')
+          i++
+        }
       }
-      i++
     }
     return source.length
   }
 
   /**
-   * Finds the end of a string or character literal.
+   * Processes a raw string literal (triple-quoted), preserving template expressions.
+   *
+   * @return The index after the string literal ends
    */
-  private fun findStringEnd(
+  private fun processRawStringLiteral(
     source: String,
     startIndex: Int,
-    delimiter: Char,
+    result: StringBuilder,
+  ): Int {
+    // Add spaces for opening quotes
+    result.append("   ")
+    var i = startIndex + 3
+
+    while (i < source.length) {
+      when {
+        // End of raw string
+        source.startsWith("\"\"\"", i) -> {
+          result.append("   ")
+          return i + 3
+        }
+        // Template expression - preserve the expression content
+        source.startsWith("\${", i) -> {
+          result.append(' ') // for $
+          result.append(' ') // for {
+          i += 2
+          i = processTemplateExpression(source, i, result)
+        }
+        // Simple template variable ($identifier)
+        source[i] == '$' && i + 1 < source.length && isIdentifierStart(source[i + 1]) -> {
+          result.append(' ') // for $
+          i++
+          // Preserve the identifier
+          while (i < source.length && isIdentifierPart(source[i])) {
+            result.append(source[i])
+            i++
+          }
+        }
+        // Newline - preserve for line tracking
+        source[i] == '\n' -> {
+          result.append('\n')
+          i++
+        }
+        // Regular character - replace with space
+        else -> {
+          result.append(' ')
+          i++
+        }
+      }
+    }
+    return source.length
+  }
+
+  /**
+   * Processes a template expression ${...}, preserving its content.
+   * Handles nested braces and nested strings.
+   *
+   * @return The index after the closing brace
+   */
+  private fun processTemplateExpression(
+    source: String,
+    startIndex: Int,
+    result: StringBuilder,
+  ): Int {
+    var i = startIndex
+    var braceDepth = 1
+
+    while (i < source.length && braceDepth > 0) {
+      when {
+        source[i] == '{' -> {
+          result.append(source[i])
+          braceDepth++
+          i++
+        }
+        source[i] == '}' -> {
+          braceDepth--
+          if (braceDepth > 0) {
+            result.append(source[i])
+          } else {
+            result.append(' ') // Replace closing } with space
+          }
+          i++
+        }
+        // Nested string inside template - recursively process
+        source[i] == '"' && !source.startsWith("\"\"\"", i) -> {
+          i = processStringLiteral(source, i, result)
+        }
+        // Nested raw string inside template
+        source.startsWith("\"\"\"", i) -> {
+          i = processRawStringLiteral(source, i, result)
+        }
+        source[i] == '\n' -> {
+          result.append('\n')
+          i++
+        }
+        else -> {
+          result.append(source[i])
+          i++
+        }
+      }
+    }
+    return i
+  }
+
+  /**
+   * Finds the end of a character literal.
+   */
+  private fun findCharLiteralEnd(
+    source: String,
+    startIndex: Int,
   ): Int {
     var i = startIndex
     while (i < source.length) {
@@ -105,11 +249,10 @@ class SourceTokenizer {
           // Skip escaped character
           i += 2
         }
-        source[i] == delimiter -> {
+        source[i] == '\'' -> {
           return i + 1
         }
         source[i] == '\n' -> {
-          // String literals can't span lines (except raw strings)
           return i
         }
         else -> {
@@ -167,5 +310,19 @@ class SourceTokenizer {
         result.append(' ')
       }
     }
+  }
+
+  /**
+   * Checks if a character can start an identifier.
+   */
+  private fun isIdentifierStart(c: Char): Boolean {
+    return c.isLetter() || c == '_'
+  }
+
+  /**
+   * Checks if a character can be part of an identifier.
+   */
+  private fun isIdentifierPart(c: Char): Boolean {
+    return c.isLetterOrDigit() || c == '_'
   }
 }
