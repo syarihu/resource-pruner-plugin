@@ -35,6 +35,16 @@ abstract class PruneResourcesPreviewTask : BaseResourcePrunerTask() {
       logger.lifecycle("Exclude patterns: ${excludePatterns.map { it.pattern }}")
     }
 
+    val targetTypes = targetResourceTypes.get()
+    if (targetTypes.isNotEmpty()) {
+      logger.lifecycle("Target resource types: $targetTypes")
+    }
+
+    val excludeTypes = excludeResourceTypes.get()
+    if (excludeTypes.isNotEmpty()) {
+      logger.lifecycle("Exclude resource types: $excludeTypes")
+    }
+
     // Collect resources
     val collector = CompositeResourceCollector.createDefault()
     val detectedResources = collector.collect(resDirs)
@@ -47,7 +57,13 @@ abstract class PruneResourcesPreviewTask : BaseResourcePrunerTask() {
 
     // Analyze
     val pruner = DefaultResourcePruner()
-    val analysis = pruner.analyze(detectedResources, references, excludePatterns)
+    val analysis = pruner.analyze(
+      detectedResources,
+      references,
+      excludePatterns,
+      targetTypes,
+      excludeTypes,
+    )
 
     // Report results
     logger.lifecycle("")

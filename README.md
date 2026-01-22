@@ -157,6 +157,9 @@ resourcePruner {
     // Optional: Only target specific resource types
     targetResourceTypes.addAll("drawable", "string", "layout")
 
+    // Optional: Exclude specific resource types from pruning
+    excludeResourceTypes.addAll("menu")  // Preserve all menu resources
+
     // Optional: Specify which source sets to scan
     sourceSets.addAll("main", "debug")
 }
@@ -168,6 +171,7 @@ resourcePruner {
 |--------|------|-------------|
 | `excludeResourceNamePatterns` | `List<String>` | Regex patterns for resource names to exclude from pruning |
 | `targetResourceTypes` | `Set<String>` | Resource types to target (empty = all types) |
+| `excludeResourceTypes` | `Set<String>` | Resource types to exclude from pruning (applied after targetResourceTypes) |
 | `sourceSets` | `Set<String>` | Source sets to scan for usage (default: `["main"]`) |
 | `scanDependentProjects` | `Boolean` | Scan dependent projects for resource usage (default: `true`) |
 

@@ -30,6 +30,14 @@ abstract class BaseResourcePrunerTask : DefaultTask() {
   abstract val targetResourceTypes: SetProperty<String>
 
   /**
+   * Resource types to exclude from pruning.
+   * Resources of these types will be preserved even if unused.
+   */
+  @get:Input
+  @get:Optional
+  abstract val excludeResourceTypes: SetProperty<String>
+
+  /**
    * Resource directories to scan for resources.
    */
   @get:InputFiles
