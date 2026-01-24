@@ -174,6 +174,7 @@ resourcePruner {
 | `excludeResourceTypes` | `Set<String>` | Resource types to exclude from pruning (applied after targetResourceTypes) |
 | `sourceSets` | `Set<String>` | Source sets to scan for usage (default: `["main"]`) |
 | `scanDependentProjects` | `Boolean` | Scan dependent projects for resource usage (default: `true`) |
+| `cascadePrune` | `Boolean` | Repeatedly prune until no unused resources remain (default: `true`, max 5 iterations) |
 
 ### Supported Resource Types
 
