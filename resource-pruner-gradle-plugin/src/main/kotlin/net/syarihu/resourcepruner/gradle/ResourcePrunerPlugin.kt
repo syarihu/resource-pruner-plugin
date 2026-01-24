@@ -43,6 +43,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
     extension.targetResourceTypes.convention(emptySet())
     extension.excludeResourceTypes.convention(emptySet())
     extension.scanDependentProjects.convention(true)
+    extension.cascadePrune.convention(true)
 
     // Register tasks for Android Application projects
     project.plugins.withId("com.android.application") {
@@ -95,6 +96,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
         task.excludeResourceNamePatterns.set(extension.excludeResourceNamePatterns)
         task.targetResourceTypes.set(extension.targetResourceTypes)
         task.excludeResourceTypes.set(extension.excludeResourceTypes)
+        task.cascadePrune.set(extension.cascadePrune)
         task.sourceDirectories.from(sourceDirectories)
         task.sourceDirectories.from(dependentProjectSources)
         task.resDirectories.from(resDirectories)
@@ -113,6 +115,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
         task.excludeResourceNamePatterns.set(extension.excludeResourceNamePatterns)
         task.targetResourceTypes.set(extension.targetResourceTypes)
         task.excludeResourceTypes.set(extension.excludeResourceTypes)
+        task.cascadePrune.set(extension.cascadePrune)
         task.sourceDirectories.from(sourceDirectories)
         task.sourceDirectories.from(dependentProjectSources)
         task.resDirectories.from(resDirectories)

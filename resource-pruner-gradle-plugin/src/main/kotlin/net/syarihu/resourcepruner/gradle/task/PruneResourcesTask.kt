@@ -3,6 +3,8 @@ package net.syarihu.resourcepruner.gradle.task
 import net.syarihu.resourcepruner.collector.CompositeResourceCollector
 import net.syarihu.resourcepruner.detector.CompositeUsageDetector
 import net.syarihu.resourcepruner.pruner.DefaultResourcePruner
+import net.syarihu.resourcepruner.model.PruneError
+import net.syarihu.resourcepruner.model.PrunedResource
 import org.gradle.api.tasks.TaskAction
 
 /**
@@ -43,53 +45,88 @@ abstract class PruneResourcesTask : BaseResourcePrunerTask() {
       logger.lifecycle("Exclude resource types: $excludeTypes")
     }
 
-    // Collect resources
-    val collector = CompositeResourceCollector.createDefault()
-    val detectedResources = collector.collect(resDirs)
-    logger.lifecycle("Detected ${detectedResources.size} resources")
-
-    // Detect usage
-    val detector = CompositeUsageDetector.createDefault()
-    val references = detector.detect(sourceDirs, resDirs)
-    logger.lifecycle("Found ${references.size} resource references")
-
-    // Analyze
-    val pruner = DefaultResourcePruner()
-    val analysis = pruner.analyze(
-      detectedResources,
-      references,
-      excludePatterns,
-      targetTypes,
-      excludeTypes,
-    )
-
-    if (analysis.toBeRemoved.isEmpty()) {
-      logger.lifecycle("No unused resources found. Nothing to prune.")
-      return
+    val isCascade = cascadePrune.getOrElse(false)
+    if (isCascade) {
+      logger.lifecycle("Cascade pruning enabled (max $maxCascadeIterations iterations)")
     }
 
-    logger.lifecycle("Found ${analysis.toBeRemoved.size} unused resources. Pruning...")
+    val collector = CompositeResourceCollector.createDefault()
+    val detector = CompositeUsageDetector.createDefault()
+    val pruner = DefaultResourcePruner()
 
-    // Execute pruning
-    val report = pruner.execute(analysis)
+    var totalPrunedCount = 0
+    var totalErrorCount = 0
+    var iteration = 0
+    val allPrunedResources = mutableListOf<PrunedResource>()
+    val allErrors = mutableListOf<PruneError>()
+
+    do {
+      iteration++
+      if (isCascade && iteration > 1) {
+        logger.lifecycle("")
+        logger.lifecycle("=== Cascade iteration $iteration ===")
+      }
+
+      // Collect resources
+      val detectedResources = collector.collect(resDirs)
+      logger.lifecycle("Detected ${detectedResources.size} resources")
+
+      // Detect usage
+      val references = detector.detect(sourceDirs, resDirs)
+      logger.lifecycle("Found ${references.size} resource references")
+
+      // Analyze
+      val analysis = pruner.analyze(
+        detectedResources,
+        references,
+        excludePatterns,
+        targetTypes,
+        excludeTypes,
+      )
+
+      if (analysis.toBeRemoved.isEmpty()) {
+        if (iteration == 1) {
+          logger.lifecycle("No unused resources found. Nothing to prune.")
+        } else {
+          logger.lifecycle("No more unused resources found.")
+        }
+        break
+      }
+
+      logger.lifecycle("Found ${analysis.toBeRemoved.size} unused resources. Pruning...")
+
+      // Execute pruning
+      val report = pruner.execute(analysis)
+
+      totalPrunedCount += report.prunedCount
+      totalErrorCount += report.errorCount
+      allPrunedResources.addAll(report.prunedResources)
+      allErrors.addAll(report.errors)
+
+      if (isCascade) {
+        logger.lifecycle("Iteration $iteration: pruned ${report.prunedCount} resources")
+      }
+    } while (isCascade && iteration < maxCascadeIterations && totalPrunedCount > 0)
 
     // Report results
     logger.lifecycle("")
     logger.lifecycle("=== Pruning Results ===")
-    logger.lifecycle("Resources pruned: ${report.prunedCount}")
-    logger.lifecycle("Resources preserved: ${report.preservedCount}")
+    if (isCascade && iteration > 1) {
+      logger.lifecycle("Total iterations: $iteration")
+    }
+    logger.lifecycle("Resources pruned: $totalPrunedCount")
 
-    if (report.errorCount > 0) {
-      logger.lifecycle("Errors: ${report.errorCount}")
-      report.errors.forEach { error ->
+    if (totalErrorCount > 0) {
+      logger.lifecycle("Errors: $totalErrorCount")
+      allErrors.forEach { error ->
         logger.error("  - ${error.resource.name}: ${error.message}")
       }
     }
 
-    if (report.prunedResources.isNotEmpty()) {
+    if (allPrunedResources.isNotEmpty()) {
       logger.lifecycle("")
       logger.lifecycle("Pruned resources:")
-      report.prunedResources
+      allPrunedResources
         .groupBy { it.resource.type.typeName }
         .forEach { (typeName, resources) ->
           logger.lifecycle("  $typeName: ${resources.size}")
@@ -103,10 +140,10 @@ abstract class PruneResourcesTask : BaseResourcePrunerTask() {
     }
 
     logger.lifecycle("")
-    if (report.isSuccess) {
+    if (totalErrorCount == 0) {
       logger.lifecycle("Pruning completed successfully!")
     } else {
-      logger.warn("Pruning completed with ${report.errorCount} errors.")
+      logger.warn("Pruning completed with $totalErrorCount errors.")
     }
   }
 }
