@@ -45,6 +45,13 @@ abstract class PruneResourcesPreviewTask : BaseResourcePrunerTask() {
       logger.lifecycle("Exclude resource types: $excludeTypes")
     }
 
+    val isCascade = cascadePrune.getOrElse(false)
+    if (isCascade) {
+      logger.lifecycle(
+        "Note: Cascade preview is not supported. Run 'pruneResources' task with cascadePrune enabled to see cascade effects.",
+      )
+    }
+
     // Collect resources
     val collector = CompositeResourceCollector.createDefault()
     val detectedResources = collector.collect(resDirs)

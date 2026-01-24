@@ -3,9 +3,11 @@ package net.syarihu.resourcepruner.gradle.task
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -50,6 +52,21 @@ abstract class BaseResourcePrunerTask : DefaultTask() {
   @get:InputFiles
   @get:PathSensitive(PathSensitivity.RELATIVE)
   abstract val sourceDirectories: ConfigurableFileCollection
+
+  /**
+   * Whether to perform cascade pruning.
+   * When enabled, the pruner will repeatedly scan and remove unused resources
+   * until no more unused resources are found (max 5 iterations).
+   */
+  @get:Input
+  @get:Optional
+  abstract val cascadePrune: Property<Boolean>
+
+  /**
+   * Maximum number of cascade iterations.
+   */
+  @get:Internal
+  protected val maxCascadeIterations: Int = 5
 
   /**
    * Compiles exclude patterns to Regex objects.

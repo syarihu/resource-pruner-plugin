@@ -93,4 +93,22 @@ abstract class ResourcePrunerExtension {
    * ```
    */
   abstract val scanDependentProjects: Property<Boolean>
+
+  /**
+   * Whether to perform cascade pruning.
+   *
+   * When enabled, the pruner will repeatedly scan and remove unused resources
+   * until no more unused resources are found. This handles cases where removing
+   * a resource causes other resources that referenced it to become unused.
+   *
+   * The maximum number of iterations is 5 to prevent infinite loops.
+   *
+   * Defaults to true.
+   *
+   * Example:
+   * ```kotlin
+   * cascadePrune.set(false) // Disable cascade pruning
+   * ```
+   */
+  abstract val cascadePrune: Property<Boolean>
 }
