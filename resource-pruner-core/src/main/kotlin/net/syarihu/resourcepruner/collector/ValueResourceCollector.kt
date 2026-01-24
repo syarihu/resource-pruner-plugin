@@ -179,11 +179,15 @@ class ValueResourceCollector : ResourceCollector {
 
   /**
    * Represents a parsed XML element.
+   *
+   * @property tagName The tag name of the element.
+   * @property name The resource name (from name attribute).
+   * @property itemType The type attribute value (only for `<item type="...">` elements).
    */
   private data class ParsedElement(
     val tagName: String,
     val name: String?,
-    val itemType: String?, // Only for <item type="..."> elements
+    val itemType: String?,
   )
 
   private fun isSelfClosing(line: String): Boolean = line.trim().endsWith("/>")
@@ -208,7 +212,10 @@ class ValueResourceCollector : ResourceCollector {
    * For regular tags (string, color, etc.), the type is determined by the tag name.
    * For <item> tags, the type is determined by the type attribute.
    */
-  private fun getResourceTypeForElement(tagName: String, itemType: String?): ResourceType? {
+  private fun getResourceTypeForElement(
+    tagName: String,
+    itemType: String?,
+  ): ResourceType? {
     // For item tags, use the type attribute to determine the resource type
     if (tagName == "item" && itemType != null) {
       return getResourceTypeForItemType(itemType)
