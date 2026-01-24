@@ -1,13 +1,18 @@
 #!/bin/bash
-set -e
 
 echo "=== Test: pruneResourcesPreview should detect multi-module usage correctly ==="
 
 # Run pruneResourcesPreview on example-lib module
 # This tests that resources used by dependent modules (example, example-multi-app) are preserved
-OUTPUT=$(./gradlew :example-lib:pruneResourcesPreviewDebug --no-configuration-cache 2>&1)
+# Capture output and exit code separately to ensure output is always displayed
+OUTPUT=$(./gradlew :example-lib:pruneResourcesPreviewDebug --no-configuration-cache 2>&1) || GRADLE_EXIT_CODE=$?
 
 echo "$OUTPUT"
+
+if [ -n "$GRADLE_EXIT_CODE" ] && [ "$GRADLE_EXIT_CODE" -ne 0 ]; then
+  echo "FAILURE: Gradle command failed with exit code $GRADLE_EXIT_CODE"
+  exit 1
+fi
 
 # Verify that lib_used_string is preserved (used by example module)
 if echo "$OUTPUT" | grep -q "Resources to preserve:"; then

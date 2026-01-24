@@ -1,12 +1,17 @@
 #!/bin/bash
-set -e
 
 echo "=== Test: pruneResourcesPreview should detect unused resources correctly ==="
 
 # Run pruneResourcesPreview on example module
-OUTPUT=$(./gradlew :example:pruneResourcesPreviewDebug --no-configuration-cache 2>&1)
+# Capture output and exit code separately to ensure output is always displayed
+OUTPUT=$(./gradlew :example:pruneResourcesPreviewDebug --no-configuration-cache 2>&1) || GRADLE_EXIT_CODE=$?
 
 echo "$OUTPUT"
+
+if [ -n "$GRADLE_EXIT_CODE" ] && [ "$GRADLE_EXIT_CODE" -ne 0 ]; then
+  echo "FAILURE: Gradle command failed with exit code $GRADLE_EXIT_CODE"
+  exit 1
+fi
 
 # Verify that unused resources are detected
 if echo "$OUTPUT" | grep -q "Resources to prune:"; then
