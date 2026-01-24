@@ -180,6 +180,7 @@ resourcePruner {
 - `drawable`, `mipmap` - Image resources
 - `layout` - Layout XML files
 - `menu` - Menu XML files
+- `raw` - Raw resources (audio, video, JSON, text, etc.)
 - `string`, `plurals` - String resources
 - `color` - Color resources
 - `dimen` - Dimension resources
