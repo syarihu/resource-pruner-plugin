@@ -8,7 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-test:
+  # Build plugin with latest Gradle and publish to Maven Local
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -33,6 +34,73 @@ jobs:
 
       - name: Publish all modules to Maven Local
         run: ./gradlew :resource-pruner-core:publishToMavenLocal :resource-pruner-gradle-plugin:publishToMavenLocal -PexcludeExample --no-configuration-cache
+
+      - name: Upload Maven Local artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: maven-local
+          path: ~/.m2/repository/net/syarihu/
+          retention-days: 1
+
+  # Test plugin compatibility with different Gradle versions
+  test-compatibility:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Gradle 8.7: ProjectDependency.getPath() doesn't exist, getDependencyProject() exists
+          # Checksums from https://gradle.org/release-checksums/
+          - gradle: "8.7"
+            gradle_checksum: "544c35d6bd849ae8a5ed0bcea39ba677dc40f49df7d1835561582da2009b961d"
+            agp: "8.5.2"
+            name: "Gradle 8.7 + AGP 8.5.2"
+          # Gradle 8.11: Both getPath() and getDependencyProject() exist
+          - gradle: "8.11.1"
+            gradle_checksum: "f397b287023acdba1e9f6fc5ea72d22dd63669d59ed4a289a29b1a76eee151c6"
+            agp: "8.7.3"
+            name: "Gradle 8.11 + AGP 8.7.3"
+          # Gradle 9.x: getPath() exists, getDependencyProject() is removed
+          - gradle: "9.2.1"
+            gradle_checksum: "72f44c9f8ebcb1af43838f45ee5c4aa9c5444898b3468ab3f4af7b6076c5bc3f"
+            agp: "8.13.2"
+            name: "Gradle 9.2 + AGP 8.13.2"
+
+    name: ${{ matrix.name }}
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Download Maven Local artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: maven-local
+          path: ~/.m2/repository/net/syarihu/
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4.4.1
+
+      - name: Update Gradle version
+        run: ./gradlew wrapper --gradle-version=${{ matrix.gradle }} --gradle-distribution-sha256-sum=${{ matrix.gradle_checksum }} -PexcludeExample --no-configuration-cache
+
+      - name: Update AGP version
+        run: sed -i 's/agp = ".*"/agp = "${{ matrix.agp }}"/' gradle/plugin.versions.toml
+
+      - name: Show versions
+        run: |
+          echo "Gradle version:"
+          ./gradlew --version | grep "Gradle"
+          echo "AGP version:"
+          grep "agp = " gradle/plugin.versions.toml
 
       - name: "Test: pruneResourcesPreview detects unused resources correctly"
         run: ./scripts/test-preview.sh
