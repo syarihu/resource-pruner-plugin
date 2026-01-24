@@ -179,28 +179,65 @@ class ResourcePrunerPlugin : Plugin<Project> {
     dependentProject: Project,
     targetProject: Project,
   ): Boolean {
-    // Check Gradle configurations (works when project is fully configured)
-    val commonConfigs = listOf(
-      "implementation",
-      "api",
-      "compileOnly",
-      "runtimeOnly",
-      "debugImplementation",
-      "releaseImplementation",
-    )
+    // Try to check Gradle configurations (works when project is fully configured)
+    // This is wrapped in try-catch to handle Gradle API changes across versions:
+    // - Gradle 8.7 and earlier: ProjectDependency.getPath() doesn't exist
+    // - Gradle 8.11+: ProjectDependency.getPath() was added
+    // - Gradle 9.0+: ProjectDependency.getDependencyProject() was removed
+    try {
+      val commonConfigs = listOf(
+        "implementation",
+        "api",
+        "compileOnly",
+        "runtimeOnly",
+        "debugImplementation",
+        "releaseImplementation",
+      )
 
-    for (configName in commonConfigs) {
-      val config = dependentProject.configurations.findByName(configName)
-      if (config != null) {
-        val projectDeps = config.dependencies.filterIsInstance<ProjectDependency>()
-        if (projectDeps.any { it.path == targetProject.path }) {
-          return true
+      for (configName in commonConfigs) {
+        val config = dependentProject.configurations.findByName(configName)
+        if (config != null) {
+          val projectDeps = config.dependencies.filterIsInstance<ProjectDependency>()
+          for (dep in projectDeps) {
+            // Use reflection to handle different Gradle versions
+            val depPath = getProjectDependencyPath(dep, dependentProject)
+            if (depPath == targetProject.path) {
+              return true
+            }
+          }
         }
       }
+    } catch (e: Exception) {
+      // API not available in this Gradle version, fall through to build file check
     }
 
-    // Parse build files directly (works with Configuration on demand)
+    // Parse build files directly (works with Configuration on demand and all Gradle versions)
     return checkBuildFileForDependency(dependentProject, targetProject)
+  }
+
+  /**
+   * Gets the path from a ProjectDependency using reflection to handle different Gradle versions.
+   */
+  private fun getProjectDependencyPath(
+    dep: ProjectDependency,
+    project: Project,
+  ): String? {
+    return try {
+      // Try Gradle 8.11+ API: ProjectDependency.getPath()
+      val getPathMethod = ProjectDependency::class.java.getMethod("getPath")
+      getPathMethod.invoke(dep) as? String
+    } catch (e: NoSuchMethodException) {
+      try {
+        // Try Gradle 8.x API: ProjectDependency.getDependencyProject().getPath()
+        val getDependencyProjectMethod = ProjectDependency::class.java.getMethod("getDependencyProject")
+        val depProject = getDependencyProjectMethod.invoke(dep) as? Project
+        depProject?.path
+      } catch (e2: Exception) {
+        null
+      }
+    } catch (e: Exception) {
+      null
+    }
   }
 
   /**
