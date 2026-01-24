@@ -566,6 +566,62 @@ class XmlUsageDetectorTest : DescribeSpec({
           tempDir.toFile().deleteRecursively()
         }
       }
+
+      it("should detect raw resource references") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val layoutDir = tempDir.resolve("layout").createDirectories()
+          layoutDir.resolve("activity_main.xml").writeText(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <LinearLayout>
+                <com.example.CustomAnimationView
+                    app:animationRes="@raw/sample_animation"
+                    android:contentDescription="@string/sample_description" />
+            </LinearLayout>
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(emptyList(), listOf(tempDir))
+
+          val rawRefs = references.filter { it.resourceType == ResourceType.File.Raw }
+          rawRefs shouldHaveSize 1
+          rawRefs.first().resourceName shouldBe "sample_animation"
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should detect multiple raw resource references in different contexts") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val valuesDir = tempDir.resolve("values").createDirectories()
+          valuesDir.resolve("arrays.xml").writeText(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <resources>
+                <array name="sample_files">
+                    <item>@raw/sample_audio_1</item>
+                    <item>@raw/sample_audio_2</item>
+                    <item>@raw/sample_audio_3</item>
+                </array>
+            </resources>
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(emptyList(), listOf(tempDir))
+
+          val rawRefs = references.filter { it.resourceType == ResourceType.File.Raw }
+          rawRefs shouldHaveSize 3
+          rawRefs.map { it.resourceName } shouldContainExactlyInAnyOrder listOf(
+            "sample_audio_1",
+            "sample_audio_2",
+            "sample_audio_3",
+          )
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
     }
   }
 })

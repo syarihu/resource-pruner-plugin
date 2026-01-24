@@ -399,6 +399,38 @@ class KotlinUsageDetectorTest : DescribeSpec({
           tempDir.toFile().deleteRecursively()
         }
       }
+
+      it("should detect R.raw references") {
+        val tempDir = Files.createTempDirectory("src")
+        try {
+          val kotlinFile = tempDir.resolve("Test.kt")
+          kotlinFile.writeText(
+            """
+            package com.example
+
+            class Test {
+                fun loadResources() {
+                    val audio = R.raw.sample_audio
+                    val config = R.raw.sample_config
+                    val animation = R.raw.sample_animation
+                }
+            }
+            """.trimIndent(),
+          )
+
+          val references = detector.detect(listOf(tempDir), emptyList())
+
+          references shouldHaveSize 3
+          references.map { it.resourceName } shouldContainExactlyInAnyOrder listOf(
+            "sample_audio",
+            "sample_config",
+            "sample_animation",
+          )
+          references.all { it.resourceType == ResourceType.File.Raw } shouldBe true
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
     }
   }
 })
