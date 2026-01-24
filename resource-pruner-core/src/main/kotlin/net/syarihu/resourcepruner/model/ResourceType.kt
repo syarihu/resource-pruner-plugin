@@ -39,6 +39,9 @@ sealed class ResourceType {
 
     /** Color state list resources (res/color/) */
     data object ColorStateList : File("color")
+
+    /** Raw resources (res/raw/) - audio, video, JSON, etc. */
+    data object Raw : File("raw")
   }
 
   /**
@@ -87,6 +90,7 @@ sealed class ResourceType {
       File.Animator,
       File.Anim,
       File.ColorStateList,
+      File.Raw,
     )
 
     /**

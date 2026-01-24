@@ -140,6 +140,57 @@ class FileResourceCollectorTest : DescribeSpec({
           tempDir.toFile().deleteRecursively()
         }
       }
+
+      it("should collect raw resources with any file extension") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val rawDir = tempDir.resolve("raw").createDirectories()
+          // Raw resources can contain any file type
+          rawDir.resolve("sample_audio.mp3").writeText("")
+          rawDir.resolve("sample_config.json").writeText("{}")
+          rawDir.resolve("sample_data.json").writeText("{}")
+          rawDir.resolve("sample_video.mp4").writeText("")
+          rawDir.resolve("sample_text.txt").writeText("")
+
+          val resources = collector.collect(listOf(tempDir))
+
+          resources shouldHaveSize 5
+          resources.all { it.type == ResourceType.File.Raw } shouldBe true
+          resources.map { it.name } shouldContainExactlyInAnyOrder listOf(
+            "sample_audio",
+            "sample_config",
+            "sample_data",
+            "sample_video",
+            "sample_text",
+          )
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
+
+      it("should collect raw resources with qualifiers") {
+        val tempDir = Files.createTempDirectory("res")
+        try {
+          val rawDir = tempDir.resolve("raw").createDirectories()
+          rawDir.resolve("sample_audio.mp3").writeText("")
+
+          val rawJaDir = tempDir.resolve("raw-ja").createDirectories()
+          rawJaDir.resolve("sample_audio.mp3").writeText("")
+
+          val resources = collector.collect(listOf(tempDir))
+
+          resources shouldHaveSize 2
+          resources.all { it.type == ResourceType.File.Raw } shouldBe true
+
+          val defaultResource = resources.find { it.qualifiers.isEmpty() }
+          defaultResource?.name shouldBe "sample_audio"
+
+          val jaResource = resources.find { it.qualifiers == setOf("ja") }
+          jaResource?.name shouldBe "sample_audio"
+        } finally {
+          tempDir.toFile().deleteRecursively()
+        }
+      }
     }
   }
 })

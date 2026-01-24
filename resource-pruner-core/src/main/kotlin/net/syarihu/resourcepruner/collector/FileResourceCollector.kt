@@ -52,7 +52,7 @@ class FileResourceCollector : ResourceCollector {
     return Files.list(dir).use { stream ->
       stream
         .filter { it.isRegularFile() }
-        .filter { isResourceFile(it) }
+        .filter { isResourceFile(it, resourceType) }
         .toList()
         .map { file ->
           DetectedResource(
@@ -106,8 +106,14 @@ class FileResourceCollector : ResourceCollector {
    *
    * Resource files are typically XML or image files.
    * Excludes hidden files and certain system files.
+   *
+   * For raw resources, all file types are accepted since they can contain
+   * any type of file (audio, video, JSON, text, etc.).
    */
-  private fun isResourceFile(file: Path): Boolean {
+  private fun isResourceFile(
+    file: Path,
+    resourceType: ResourceType.File,
+  ): Boolean {
     val fileName = file.fileName.toString()
 
     // Skip hidden files
@@ -120,7 +126,12 @@ class FileResourceCollector : ResourceCollector {
       return false
     }
 
-    // Accept common resource file extensions
+    // Raw resources can contain any file type
+    if (resourceType == ResourceType.File.Raw) {
+      return true
+    }
+
+    // Accept common resource file extensions for other resource types
     val extension = file.extension.lowercase()
     return extension in VALID_EXTENSIONS
   }

@@ -75,11 +75,11 @@ class ValueResourceCollector : ResourceCollector {
         // Look for element start
         val elementStart = parseElementStart(line)
         if (elementStart != null) {
-          val (tagName, name) = elementStart
+          val (tagName, name, itemType) = elementStart
 
           if (isSelfClosing(line)) {
             // Single-line element
-            val resourceType = getResourceTypeForTag(tagName)
+            val resourceType = getResourceTypeForElement(tagName, itemType)
             if (resourceType != null && name != null) {
               resources.add(
                 DetectedResource(
@@ -100,6 +100,7 @@ class ValueResourceCollector : ResourceCollector {
             currentElement = ElementBuilder(
               tagName = tagName,
               name = name,
+              itemType = itemType,
               startLine = lineNumber,
             )
             currentElement.appendLine(line)
@@ -134,11 +135,11 @@ class ValueResourceCollector : ResourceCollector {
   }
 
   /**
-   * Parses the start of an XML element and extracts tag name and resource name.
+   * Parses the start of an XML element and extracts tag name, resource name, and optional type.
    *
-   * @return Pair of (tagName, resourceName) or null if not a valid resource element
+   * @return ParsedElement or null if not a valid resource element
    */
-  private fun parseElementStart(line: String): Pair<String, String?>? {
+  private fun parseElementStart(line: String): ParsedElement? {
     val trimmed = line.trim()
     if (!trimmed.startsWith("<") ||
       trimmed.startsWith("</") ||
@@ -152,8 +153,8 @@ class ValueResourceCollector : ResourceCollector {
     val tagMatch = TAG_NAME_PATTERN.find(trimmed) ?: return null
     val tagName = tagMatch.groupValues[1]
 
-    // Check if it's a supported resource tag
-    if (!SUPPORTED_TAGS.contains(tagName)) {
+    // Check if it's a supported resource tag or an item tag
+    if (!SUPPORTED_TAGS.contains(tagName) && tagName != "item") {
       return null
     }
 
@@ -161,8 +162,33 @@ class ValueResourceCollector : ResourceCollector {
     val nameMatch = NAME_ATTRIBUTE_PATTERN.find(trimmed)
     val name = nameMatch?.groupValues?.get(1)
 
-    return Pair(tagName, name)
+    // For item tags, extract the type attribute
+    val itemType = if (tagName == "item") {
+      TYPE_ATTRIBUTE_PATTERN.find(trimmed)?.groupValues?.get(1)
+    } else {
+      null
+    }
+
+    // Skip item tags without a type attribute (they are style items, not resource definitions)
+    if (tagName == "item" && itemType == null) {
+      return null
+    }
+
+    return ParsedElement(tagName, name, itemType)
   }
+
+  /**
+   * Represents a parsed XML element.
+   *
+   * @property tagName The tag name of the element.
+   * @property name The resource name (from name attribute).
+   * @property itemType The type attribute value (only for `<item type="...">` elements).
+   */
+  private data class ParsedElement(
+    val tagName: String,
+    val name: String?,
+    val itemType: String?,
+  )
 
   private fun isSelfClosing(line: String): Boolean = line.trim().endsWith("/>")
 
@@ -180,7 +206,22 @@ class ValueResourceCollector : ResourceCollector {
     }
   }
 
-  private fun getResourceTypeForTag(tagName: String): ResourceType.Value? {
+  /**
+   * Gets the resource type for an element.
+   *
+   * For regular tags (string, color, etc.), the type is determined by the tag name.
+   * For <item> tags, the type is determined by the type attribute.
+   */
+  private fun getResourceTypeForElement(
+    tagName: String,
+    itemType: String?,
+  ): ResourceType? {
+    // For item tags, use the type attribute to determine the resource type
+    if (tagName == "item" && itemType != null) {
+      return getResourceTypeForItemType(itemType)
+    }
+
+    // For regular tags, use the tag name
     return when (tagName) {
       "string" -> ResourceType.Value.StringRes
       "color" -> ResourceType.Value.Color
@@ -191,6 +232,33 @@ class ValueResourceCollector : ResourceCollector {
       "array", "string-array", "integer-array" -> ResourceType.Value.Array
       "attr" -> ResourceType.Value.Attr
       "plurals" -> ResourceType.Value.Plurals
+      "drawable" -> ResourceType.File.Drawable
+      else -> null
+    }
+  }
+
+  /**
+   * Gets the resource type for an <item type="..."> element.
+   *
+   * This handles cases like:
+   * - <item name="sample_icon" type="drawable">@drawable/sample_icon</item>
+   * - <item name="sample_id" type="id"/>
+   * - <item name="sample_color" type="color">#FF0000</item>
+   */
+  private fun getResourceTypeForItemType(itemType: String): ResourceType? {
+    return when (itemType) {
+      "drawable" -> ResourceType.File.Drawable
+      "mipmap" -> ResourceType.File.Mipmap
+      "raw" -> ResourceType.File.Raw
+      "color" -> ResourceType.Value.Color
+      "dimen" -> ResourceType.Value.Dimen
+      "string" -> ResourceType.Value.StringRes
+      "bool" -> ResourceType.Value.Bool
+      "integer" -> ResourceType.Value.Integer
+      "array" -> ResourceType.Value.Array
+      "attr" -> ResourceType.Value.Attr
+      "style" -> ResourceType.Value.Style
+      "id" -> null // IDs are not tracked
       else -> null
     }
   }
@@ -201,6 +269,7 @@ class ValueResourceCollector : ResourceCollector {
   private class ElementBuilder(
     val tagName: String,
     val name: String,
+    val itemType: String?,
     val startLine: Int,
   ) {
     var endLine: Int = startLine
@@ -214,18 +283,7 @@ class ValueResourceCollector : ResourceCollector {
       xmlFile: Path,
       qualifiers: Set<String>,
     ): DetectedResource? {
-      val resourceType = when (tagName) {
-        "string" -> ResourceType.Value.StringRes
-        "color" -> ResourceType.Value.Color
-        "dimen" -> ResourceType.Value.Dimen
-        "style" -> ResourceType.Value.Style
-        "bool" -> ResourceType.Value.Bool
-        "integer" -> ResourceType.Value.Integer
-        "array", "string-array", "integer-array" -> ResourceType.Value.Array
-        "attr" -> ResourceType.Value.Attr
-        "plurals" -> ResourceType.Value.Plurals
-        else -> return null
-      }
+      val resourceType = getResourceType() ?: return null
 
       return DetectedResource(
         name = name,
@@ -239,11 +297,47 @@ class ValueResourceCollector : ResourceCollector {
         qualifiers = qualifiers,
       )
     }
+
+    private fun getResourceType(): ResourceType? {
+      // For item tags, use the type attribute
+      if (tagName == "item" && itemType != null) {
+        return when (itemType) {
+          "drawable" -> ResourceType.File.Drawable
+          "mipmap" -> ResourceType.File.Mipmap
+          "raw" -> ResourceType.File.Raw
+          "color" -> ResourceType.Value.Color
+          "dimen" -> ResourceType.Value.Dimen
+          "string" -> ResourceType.Value.StringRes
+          "bool" -> ResourceType.Value.Bool
+          "integer" -> ResourceType.Value.Integer
+          "array" -> ResourceType.Value.Array
+          "attr" -> ResourceType.Value.Attr
+          "style" -> ResourceType.Value.Style
+          else -> null
+        }
+      }
+
+      // For regular tags
+      return when (tagName) {
+        "string" -> ResourceType.Value.StringRes
+        "color" -> ResourceType.Value.Color
+        "dimen" -> ResourceType.Value.Dimen
+        "style" -> ResourceType.Value.Style
+        "bool" -> ResourceType.Value.Bool
+        "integer" -> ResourceType.Value.Integer
+        "array", "string-array", "integer-array" -> ResourceType.Value.Array
+        "attr" -> ResourceType.Value.Attr
+        "plurals" -> ResourceType.Value.Plurals
+        "drawable" -> ResourceType.File.Drawable
+        else -> null
+      }
+    }
   }
 
   companion object {
     private val TAG_NAME_PATTERN = Regex("""<(\w+(?:-\w+)?)[\s>]""")
     private val NAME_ATTRIBUTE_PATTERN = Regex("""name\s*=\s*"([^"]+)"""")
+    private val TYPE_ATTRIBUTE_PATTERN = Regex("""type\s*=\s*"([^"]+)"""")
 
     private val SUPPORTED_TAGS = setOf(
       "string",
@@ -257,6 +351,7 @@ class ValueResourceCollector : ResourceCollector {
       "integer-array",
       "attr",
       "plurals",
+      "drawable",
     )
   }
 }

@@ -357,8 +357,8 @@ class XmlUsageDetector : UsageDetector {
       "array" -> ResourceType.Value.Array
       "attr" -> ResourceType.Value.Attr
       "plurals" -> ResourceType.Value.Plurals
+      "raw" -> ResourceType.File.Raw
       "id" -> null // IDs are not resource files we track
-      "raw" -> null // Raw resources not tracked
       "font" -> null // Font resources not tracked for now
       "xml" -> null // XML resources not tracked for now
       else -> null
