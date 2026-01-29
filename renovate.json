@@ -1,0 +1,30 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "description": "Example-only dependencies (gradle/example.versions.toml)",
+      "matchFileNames": ["gradle/example.versions.toml"],
+      "groupName": "example dependencies",
+      "labels": ["deps:example-only"]
+    },
+    {
+      "description": "Plugin bundled dependencies (gradle/plugin.versions.toml)",
+      "matchFileNames": ["gradle/plugin.versions.toml"],
+      "labels": ["deps:plugin-bundled"]
+    },
+    {
+      "description": "Gradle Wrapper updates",
+      "matchManagers": ["gradle-wrapper"],
+      "labels": ["deps:plugin-bundled"]
+    },
+    {
+      "description": "Development tools (gradle/libs.versions.toml)",
+      "matchFileNames": ["gradle/libs.versions.toml"],
+      "labels": ["deps:dev-tools"]
+    }
+  ]
+}
+
