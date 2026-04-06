@@ -111,5 +111,11 @@ jobs:
       - name: "Test: pruneResources removes unused resources"
         run: ./scripts/test-prune.sh
 
+      - name: "Test: Aggregate pruneResourcesPreview detects unused resources"
+        run: ./scripts/test-aggregate-preview.sh
+
+      - name: "Test: Aggregate pruneResources removes unused resources"
+        run: ./scripts/test-aggregate-prune.sh
+
       - name: "Test: Configuration Cache compatibility"
         run: ./scripts/test-configuration-cache.sh
