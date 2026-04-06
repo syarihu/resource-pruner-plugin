@@ -10,6 +10,7 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
 
 /**
  * Task for detecting unused resources without removing them.
@@ -17,6 +18,7 @@ import org.gradle.api.tasks.TaskAction
  * This task performs the detection phase only and writes the results
  * to a file for later aggregation by [AggregatePruneResourcesTask].
  */
+@DisableCachingByDefault(because = "Resource detection depends on external file system state and should not be cached")
 abstract class DetectUnusedResourcesTask : BaseResourcePrunerTask() {
   /**
    * The variant name for this detection task.
