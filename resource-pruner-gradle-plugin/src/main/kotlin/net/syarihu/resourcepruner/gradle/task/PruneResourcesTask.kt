@@ -59,6 +59,7 @@ abstract class PruneResourcesTask : BaseResourcePrunerTask() {
     var totalPrunedCount = 0
     var totalErrorCount = 0
     var iteration = 0
+    var lastIterationPrunedCount = 0
     val allPrunedResources = mutableListOf<PrunedResource>()
     val allErrors = mutableListOf<PruneError>()
 
@@ -100,6 +101,7 @@ abstract class PruneResourcesTask : BaseResourcePrunerTask() {
       // Execute pruning
       val report = pruner.execute(analysis)
 
+      lastIterationPrunedCount = report.prunedCount
       totalPrunedCount += report.prunedCount
       totalErrorCount += report.errorCount
       allPrunedResources.addAll(report.prunedResources)
@@ -108,7 +110,7 @@ abstract class PruneResourcesTask : BaseResourcePrunerTask() {
       if (isCascade) {
         logger.lifecycle("Iteration $iteration: pruned ${report.prunedCount} resources")
       }
-    } while (isCascade && iteration < maxCascadeIterations && totalPrunedCount > 0)
+    } while (isCascade && iteration < maxCascadeIterations && lastIterationPrunedCount > 0)
 
     // Report results
     logger.lifecycle("")
