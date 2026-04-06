@@ -60,7 +60,10 @@ data class DetectionResult(
       val lines = file.readLines().filter { it.isNotBlank() }
       val variantLine = lines.firstOrNull { it.startsWith("# variant: ") }
       val variantName = variantLine?.removePrefix("# variant: ")?.trim()
-        ?: "unknown"
+        ?: throw IllegalStateException(
+          "Missing variant header in detection result file: ${file.path}. " +
+            "Expected line starting with '# variant: '.",
+        )
       val entries = lines
         .filter { !it.startsWith("#") }
         .map { UnusedResourceEntry.deserialize(it) }

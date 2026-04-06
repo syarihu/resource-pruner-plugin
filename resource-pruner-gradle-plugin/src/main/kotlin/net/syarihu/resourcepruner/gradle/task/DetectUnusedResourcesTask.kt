@@ -6,6 +6,8 @@ import net.syarihu.resourcepruner.gradle.model.DetectionResult
 import net.syarihu.resourcepruner.gradle.model.UnusedResourceEntry
 import net.syarihu.resourcepruner.pruner.DefaultResourcePruner
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 
@@ -16,6 +18,12 @@ import org.gradle.api.tasks.TaskAction
  * to a file for later aggregation by [AggregatePruneResourcesTask].
  */
 abstract class DetectUnusedResourcesTask : BaseResourcePrunerTask() {
+  /**
+   * The variant name for this detection task.
+   */
+  @get:Input
+  abstract val variantName: Property<String>
+
   /**
    * The output file where detection results are written.
    */
@@ -67,13 +75,13 @@ abstract class DetectUnusedResourcesTask : BaseResourcePrunerTask() {
     }
 
     val outputFileValue = outputFile.get().asFile
-    val variantName = outputFileValue.parentFile?.name ?: "unknown"
+    val variant = variantName.get()
     val result = DetectionResult(
-      variantName = variantName,
+      variantName = variant,
       unusedResources = entries,
     )
     result.writeTo(outputFileValue)
 
-    logger.lifecycle("Detection complete: ${entries.size} unused resources found for variant '$variantName'")
+    logger.lifecycle("Detection complete: ${entries.size} unused resources found for variant '$variant'")
   }
 }

@@ -163,6 +163,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
       ) { task ->
         task.group = TASK_GROUP
         task.description = "Detect unused resources for $variantName variant"
+        task.variantName.set(variant.name)
         task.excludeResourceNamePatterns.set(extension.excludeResourceNamePatterns)
         task.targetResourceTypes.set(extension.targetResourceTypes)
         task.excludeResourceTypes.set(extension.excludeResourceTypes)

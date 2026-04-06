@@ -70,10 +70,11 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
       return
     }
 
-    val detectionResults = resultFiles.map { DetectionResult.readFrom(it) }
+    val detectionResults = resultFiles.sortedBy { it.path }.map { DetectionResult.readFrom(it) }
     logger.lifecycle("Loaded detection results from ${detectionResults.size} variants: ${detectionResults.map { it.variantName }}")
 
     // Compute intersection: resources unused in ALL variants
+    // Start from the smallest set and use retainAll for efficiency
     val unusedSets = detectionResults.map { result ->
       result.unusedResources.map { it.serialize() }.toSet()
     }
@@ -81,7 +82,14 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
     val intersection = if (unusedSets.isEmpty()) {
       emptySet()
     } else {
-      unusedSets.reduce { acc, set -> acc.intersect(set) }
+      val smallestSet = unusedSets.minBy { it.size }
+      val result = smallestSet.toMutableSet()
+      for (set in unusedSets) {
+        if (set !== smallestSet) {
+          result.retainAll(set)
+        }
+      }
+      result.toSet()
     }
 
     logger.lifecycle("Resources unused across all variants: ${intersection.size}")
