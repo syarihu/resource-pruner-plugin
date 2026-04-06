@@ -97,18 +97,19 @@ class ValueResourceCollector : ResourceCollector {
             }
           } else if (name != null) {
             // Multi-line element start
-            currentElement = ElementBuilder(
+            val element = ElementBuilder(
               tagName = tagName,
               name = name,
               itemType = itemType,
               startLine = lineNumber,
             )
-            currentElement.appendLine(line)
+            currentElement = element
+            element.appendLine(line)
 
             // Check if element ends on the same line (but not self-closing)
             if (isElementEnd(line, tagName) && !isSelfClosing(line)) {
-              currentElement.endLine = lineNumber
-              val resource = currentElement.build(xmlFile, qualifiers)
+              element.endLine = lineNumber
+              val resource = element.build(xmlFile, qualifiers)
               if (resource != null) {
                 resources.add(resource)
               }
@@ -118,11 +119,12 @@ class ValueResourceCollector : ResourceCollector {
         }
       } else {
         // Continue building multi-line element
-        currentElement.appendLine(line)
+        val element = currentElement ?: return@forEachIndexed
+        element.appendLine(line)
 
-        if (isElementEnd(line, currentElement.tagName)) {
-          currentElement.endLine = lineNumber
-          val resource = currentElement.build(xmlFile, qualifiers)
+        if (isElementEnd(line, element.tagName)) {
+          element.endLine = lineNumber
+          val resource = element.build(xmlFile, qualifiers)
           if (resource != null) {
             resources.add(resource)
           }
