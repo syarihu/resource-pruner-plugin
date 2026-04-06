@@ -4,11 +4,12 @@ echo "=== Test: pruneResourcesPreview (aggregate) should detect unused resources
 
 # Run aggregate pruneResourcesPreview on example module
 # Capture output and exit code separately to ensure output is always displayed
-OUTPUT=$(./gradlew :example:pruneResourcesPreview --no-configuration-cache 2>&1) || GRADLE_EXIT_CODE=$?
+OUTPUT=$(./gradlew :example:pruneResourcesPreview --no-configuration-cache 2>&1)
+GRADLE_EXIT_CODE=$?
 
 echo "$OUTPUT"
 
-if [ -n "$GRADLE_EXIT_CODE" ] && [ "$GRADLE_EXIT_CODE" -ne 0 ]; then
+if [ "$GRADLE_EXIT_CODE" -ne 0 ]; then
   echo "FAILURE: Gradle command failed with exit code $GRADLE_EXIT_CODE"
   exit 1
 fi

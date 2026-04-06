@@ -8,11 +8,12 @@ cp -r example/src/main/res "$TEMP_DIR/res_backup"
 
 # Run aggregate pruneResources on example module
 # Capture output and exit code separately to ensure output is always displayed
-OUTPUT=$(./gradlew :example:pruneResources --no-configuration-cache 2>&1) || GRADLE_EXIT_CODE=$?
+OUTPUT=$(./gradlew :example:pruneResources --no-configuration-cache 2>&1)
+GRADLE_EXIT_CODE=$?
 
 echo "$OUTPUT"
 
-if [ -n "$GRADLE_EXIT_CODE" ] && [ "$GRADLE_EXIT_CODE" -ne 0 ]; then
+if [ "$GRADLE_EXIT_CODE" -ne 0 ]; then
   echo "FAILURE: Gradle command failed with exit code $GRADLE_EXIT_CODE"
   # Restore resources
   rm -rf example/src/main/res

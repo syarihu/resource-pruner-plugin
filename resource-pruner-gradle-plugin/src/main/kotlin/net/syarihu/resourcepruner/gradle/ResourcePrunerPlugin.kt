@@ -29,8 +29,10 @@ import java.io.File
  * ```
  *
  * Tasks:
- * - `pruneResourcesPreview{Variant}`: Preview unused resources without removing them
- * - `pruneResources{Variant}`: Remove unused resources
+ * - `pruneResources`: Prune resources unused across all variants (parallel-safe)
+ * - `pruneResourcesPreview`: Preview resources unused across all variants
+ * - `pruneResources{Variant}`: Remove unused resources for a specific variant
+ * - `pruneResourcesPreview{Variant}`: Preview unused resources for a specific variant
  */
 class ResourcePrunerPlugin : Plugin<Project> {
   override fun apply(project: Project) {

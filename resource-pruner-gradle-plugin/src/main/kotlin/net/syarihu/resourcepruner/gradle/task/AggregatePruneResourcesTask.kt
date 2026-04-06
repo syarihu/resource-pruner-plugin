@@ -94,8 +94,9 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
     val intersectedEntries = intersection.map { UnusedResourceEntry.deserialize(it) }.toSet()
 
     // Re-collect resources from disk to get accurate DetectedResource objects
-    val resDirs = resDirectories.files.map { it.toPath() }
-    val sourceDirs = sourceDirectories.files.map { it.toPath() }
+    // De-duplicate directories since multiple variants may share the same source sets
+    val resDirs = resDirectories.files.map { it.toPath() }.distinct()
+    val sourceDirs = sourceDirectories.files.map { it.toPath() }.distinct()
 
     val excludePatterns = compileExcludePatterns()
     val targetTypes = targetResourceTypes.get()
