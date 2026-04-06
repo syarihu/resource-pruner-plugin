@@ -24,7 +24,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
 
       - name: Build and test core module
         run: ./gradlew :resource-pruner-core:build -PexcludeExample --no-configuration-cache
@@ -87,7 +87,7 @@ jobs:
           path: ~/.m2/repository/net/syarihu/
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
 
       - name: Update Gradle version
         run: ./gradlew wrapper --gradle-version=${{ matrix.gradle }} --gradle-distribution-sha256-sum=${{ matrix.gradle_checksum }} -PexcludeExample --no-configuration-cache
