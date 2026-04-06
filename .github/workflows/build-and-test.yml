@@ -43,6 +43,10 @@ jobs:
           retention-days: 1
 
   # Test plugin compatibility with different Gradle versions
+  #
+  # Note: Example project tests (test scripts) only run on Gradle 9.x because some example
+  # dependencies (e.g., app.cash.paraphrase 0.5.0+) require Gradle 9.0 or newer.
+  # Gradle 8.x jobs verify plugin compatibility by building the plugin modules only.
   test-compatibility:
     needs: build
     runs-on: ubuntu-latest
@@ -56,16 +60,19 @@ jobs:
             gradle_checksum: "544c35d6bd849ae8a5ed0bcea39ba677dc40f49df7d1835561582da2009b961d"
             agp: "8.5.2"
             name: "Gradle 8.7 + AGP 8.5.2"
+            run_example_tests: false
           # Gradle 8.11: Both getPath() and getDependencyProject() exist
           - gradle: "8.11.1"
             gradle_checksum: "f397b287023acdba1e9f6fc5ea72d22dd63669d59ed4a289a29b1a76eee151c6"
             agp: "8.7.3"
             name: "Gradle 8.11 + AGP 8.7.3"
+            run_example_tests: false
           # Gradle 9.x: getPath() exists, getDependencyProject() is removed
           - gradle: "9.2.1"
             gradle_checksum: "72f44c9f8ebcb1af43838f45ee5c4aa9c5444898b3468ab3f4af7b6076c5bc3f"
             agp: "8.13.2"
             name: "Gradle 9.2 + AGP 8.13.2"
+            run_example_tests: true
 
     name: ${{ matrix.name }}
 
@@ -102,13 +109,20 @@ jobs:
           echo "AGP version:"
           grep "agp = " gradle/plugin.versions.toml
 
+      - name: Build plugin modules
+        if: ${{ !matrix.run_example_tests }}
+        run: ./gradlew :resource-pruner-core:build :resource-pruner-gradle-plugin:build -PexcludeExample --no-configuration-cache
+
       - name: "Test: pruneResourcesPreview detects unused resources correctly"
+        if: ${{ matrix.run_example_tests }}
         run: ./scripts/test-preview.sh
 
       - name: "Test: pruneResourcesPreview detects multi-module usage correctly"
+        if: ${{ matrix.run_example_tests }}
         run: ./scripts/test-preview-multi-module.sh
 
       - name: "Test: pruneResources removes unused resources"
+        if: ${{ matrix.run_example_tests }}
         run: ./scripts/test-prune.sh
 
       - name: "Test: Aggregate pruneResourcesPreview detects unused resources"
@@ -118,4 +132,5 @@ jobs:
         run: ./scripts/test-aggregate-prune.sh
 
       - name: "Test: Configuration Cache compatibility"
+        if: ${{ matrix.run_example_tests }}
         run: ./scripts/test-configuration-cache.sh
