@@ -16,6 +16,7 @@ import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
 
 /**
  * Aggregate task that collects detection results from all variants
@@ -31,6 +32,7 @@ import org.gradle.api.tasks.TaskAction
  * ./gradlew pruneResourcesPreview  # Preview without deleting
  * ```
  */
+@DisableCachingByDefault(because = "Aggregate resource pruning modifies external files and should not be cached")
 abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
   /**
    * Detection result files from all variant detection tasks.

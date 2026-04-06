@@ -5,6 +5,7 @@ import net.syarihu.resourcepruner.detector.CompositeUsageDetector
 import net.syarihu.resourcepruner.pruner.DefaultResourcePruner
 import net.syarihu.resourcepruner.model.PruneError
 import net.syarihu.resourcepruner.model.PrunedResource
+import org.gradle.work.DisableCachingByDefault
 import org.gradle.api.tasks.TaskAction
 
 /**
@@ -19,6 +20,7 @@ import org.gradle.api.tasks.TaskAction
  * ./gradlew pruneResourcesRelease
  * ```
  */
+@DisableCachingByDefault(because = "Resource pruning modifies external files and should not be cached")
 abstract class PruneResourcesTask : BaseResourcePrunerTask() {
   @TaskAction
   fun prune() {

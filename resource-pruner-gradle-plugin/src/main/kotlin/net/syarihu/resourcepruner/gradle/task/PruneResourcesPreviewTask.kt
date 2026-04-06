@@ -3,6 +3,7 @@ package net.syarihu.resourcepruner.gradle.task
 import net.syarihu.resourcepruner.collector.CompositeResourceCollector
 import net.syarihu.resourcepruner.detector.CompositeUsageDetector
 import net.syarihu.resourcepruner.pruner.DefaultResourcePruner
+import org.gradle.work.DisableCachingByDefault
 import org.gradle.api.tasks.TaskAction
 
 /**
@@ -17,6 +18,7 @@ import org.gradle.api.tasks.TaskAction
  * ./gradlew pruneResourcesPreviewRelease
  * ```
  */
+@DisableCachingByDefault(because = "Resource pruning preview depends on external file system state and should not be cached")
 abstract class PruneResourcesPreviewTask : BaseResourcePrunerTask() {
   @TaskAction
   fun preview() {

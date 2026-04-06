@@ -5,6 +5,7 @@ import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
+import org.gradle.work.DisableCachingByDefault
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
@@ -15,6 +16,7 @@ import org.gradle.api.tasks.PathSensitivity
 /**
  * Base task for resource pruner operations.
  */
+@DisableCachingByDefault(because = "Resource pruning tasks depend on external file system state and should not be cached")
 abstract class BaseResourcePrunerTask : DefaultTask() {
   /**
    * Patterns (regular expressions) for resource names to exclude from pruning.
