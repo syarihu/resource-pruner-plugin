@@ -48,7 +48,8 @@ jobs:
   # dependencies (e.g., app.cash.paraphrase 0.5.0+) require Gradle 9.0 or newer.
   # Gradle 8.x jobs verify plugin compatibility by assembling the plugin modules only
   # (without tests, since test dependencies like kotest also require newer Kotlin).
-  # Full tests run in the build job with the latest Gradle version.
+  # The build job runs core and plugin module/unit tests with the latest Gradle,
+  # while example project test scripts are covered by the Gradle 9.x compatibility job.
   test-compatibility:
     needs: build
     runs-on: ubuntu-latest
