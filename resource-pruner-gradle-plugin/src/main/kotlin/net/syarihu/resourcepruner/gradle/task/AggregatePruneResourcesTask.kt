@@ -57,7 +57,14 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
     }
 
     // Read all detection results
-    val resultFiles = detectionResultFiles.files.filter { it.exists() }
+    val resultFiles = detectionResultFiles.files
+    val missingFiles = resultFiles.filter { !it.exists() }
+    if (missingFiles.isNotEmpty()) {
+      throw org.gradle.api.GradleException(
+        "Missing detection result files: ${missingFiles.joinToString { it.path }}. " +
+          "Ensure all detection tasks have run successfully.",
+      )
+    }
     if (resultFiles.isEmpty()) {
       logger.lifecycle("No detection results found. Run detection tasks first.")
       return
@@ -68,7 +75,7 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
 
     // Compute intersection: resources unused in ALL variants
     val unusedSets = detectionResults.map { result ->
-      result.unusedResources.map { "${it.type}/${it.name}" }.toSet()
+      result.unusedResources.map { it.serialize() }.toSet()
     }
 
     val intersection = if (unusedSets.isEmpty()) {
@@ -177,6 +184,7 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
     var totalPrunedCount = 0
     var totalErrorCount = 0
     var iteration = 0
+    var lastIterationPrunedCount = 0
     val allPrunedResources = mutableListOf<PrunedResource>()
     val allErrors = mutableListOf<PruneError>()
 
@@ -222,6 +230,7 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
 
       val report = pruner.execute(filteredAnalysis)
 
+      lastIterationPrunedCount = report.prunedCount
       totalPrunedCount += report.prunedCount
       totalErrorCount += report.errorCount
       allPrunedResources.addAll(report.prunedResources)
@@ -230,7 +239,7 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
       if (isCascade) {
         logger.lifecycle("Iteration $iteration: pruned ${report.prunedCount} resources")
       }
-    } while (isCascade && iteration < maxCascadeIterations && totalPrunedCount > 0)
+    } while (isCascade && iteration < maxCascadeIterations && lastIterationPrunedCount > 0)
 
     // Report results
     logger.lifecycle("")
