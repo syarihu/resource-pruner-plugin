@@ -118,9 +118,31 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
     val pruner = DefaultResourcePruner()
 
     if (isPreview) {
-      previewResources(collector, detector, pruner, sourceResDirs, resDirs, sourceDirs, excludePatterns, targetTypes, excludeTypes, intersectedEntries)
+      previewResources(
+        collector,
+        detector,
+        pruner,
+        sourceResDirs,
+        resDirs,
+        sourceDirs,
+        excludePatterns,
+        targetTypes,
+        excludeTypes,
+        intersectedEntries,
+      )
     } else {
-      pruneResources(collector, detector, pruner, sourceResDirs, resDirs, sourceDirs, excludePatterns, targetTypes, excludeTypes, intersectedEntries)
+      pruneResources(
+        collector,
+        detector,
+        pruner,
+        sourceResDirs,
+        resDirs,
+        sourceDirs,
+        excludePatterns,
+        targetTypes,
+        excludeTypes,
+        intersectedEntries,
+      )
     }
   }
 
