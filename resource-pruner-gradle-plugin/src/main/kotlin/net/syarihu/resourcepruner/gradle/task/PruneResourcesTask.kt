@@ -27,6 +27,7 @@ abstract class PruneResourcesTask : BaseResourcePrunerTask() {
     logger.lifecycle("Pruning resources...")
 
     val resDirs = resDirectories.files.map { it.toPath() }
+    val sourceResDirs = filterSourceResDirectories(resDirs)
     val sourceDirs = sourceDirectories.files.map { it.toPath() }
 
     logger.info("Resource directories: ${resDirs.size}")
@@ -71,7 +72,7 @@ abstract class PruneResourcesTask : BaseResourcePrunerTask() {
       }
 
       // Collect resources
-      val detectedResources = collector.collect(resDirs)
+      val detectedResources = collector.collect(sourceResDirs)
       logger.lifecycle("Detected ${detectedResources.size} resources")
 
       // Detect usage
