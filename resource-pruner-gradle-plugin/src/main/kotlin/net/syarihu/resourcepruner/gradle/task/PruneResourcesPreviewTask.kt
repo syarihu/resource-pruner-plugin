@@ -28,8 +28,8 @@ abstract class PruneResourcesPreviewTask : BaseResourcePrunerTask() {
     val sourceResDirs = filterSourceResDirectories(resDirs)
     val sourceDirs = sourceDirectories.files.map { it.toPath() }
 
-    logger.info("Resource directories: ${resDirs.size}")
-    resDirs.forEach { logger.info("  - $it") }
+    logger.info("Resource directories: ${sourceResDirs.size} (${resDirs.size - sourceResDirs.size} build directories excluded)")
+    sourceResDirs.forEach { logger.info("  - $it") }
     logger.info("Source directories: ${sourceDirs.size}")
     sourceDirs.forEach { logger.info("  - $it") }
 

@@ -39,7 +39,7 @@ abstract class DetectUnusedResourcesTask : BaseResourcePrunerTask() {
     val sourceDirs = sourceDirectories.files.map { it.toPath() }
 
     logger.info("Detecting unused resources...")
-    logger.info("Resource directories: ${resDirs.size}")
+    logger.info("Resource directories: ${sourceResDirs.size} (${resDirs.size - sourceResDirs.size} build directories excluded)")
     logger.info("Source directories: ${sourceDirs.size}")
 
     val excludePatterns = compileExcludePatterns()
