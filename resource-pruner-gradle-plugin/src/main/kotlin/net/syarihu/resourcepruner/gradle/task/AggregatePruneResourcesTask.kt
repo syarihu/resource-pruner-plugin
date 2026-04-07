@@ -106,6 +106,7 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
     // Re-collect resources from disk to get accurate DetectedResource objects
     // De-duplicate directories since multiple variants may share the same source sets
     val resDirs = resDirectories.files.map { it.toPath() }.distinct()
+    val sourceResDirs = filterSourceResDirectories(resDirs)
     val sourceDirs = sourceDirectories.files.map { it.toPath() }.distinct()
 
     val excludePatterns = compileExcludePatterns()
@@ -117,9 +118,31 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
     val pruner = DefaultResourcePruner()
 
     if (isPreview) {
-      previewResources(collector, detector, pruner, resDirs, sourceDirs, excludePatterns, targetTypes, excludeTypes, intersectedEntries)
+      previewResources(
+        collector,
+        detector,
+        pruner,
+        sourceResDirs,
+        resDirs,
+        sourceDirs,
+        excludePatterns,
+        targetTypes,
+        excludeTypes,
+        intersectedEntries,
+      )
     } else {
-      pruneResources(collector, detector, pruner, resDirs, sourceDirs, excludePatterns, targetTypes, excludeTypes, intersectedEntries)
+      pruneResources(
+        collector,
+        detector,
+        pruner,
+        sourceResDirs,
+        resDirs,
+        sourceDirs,
+        excludePatterns,
+        targetTypes,
+        excludeTypes,
+        intersectedEntries,
+      )
     }
   }
 
@@ -127,6 +150,7 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
     collector: CompositeResourceCollector,
     detector: CompositeUsageDetector,
     pruner: DefaultResourcePruner,
+    sourceResDirs: List<java.nio.file.Path>,
     resDirs: List<java.nio.file.Path>,
     sourceDirs: List<java.nio.file.Path>,
     excludePatterns: List<Regex>,
@@ -134,7 +158,7 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
     excludeTypes: Set<String>,
     intersectedEntries: Set<UnusedResourceEntry>,
   ) {
-    val detectedResources = collector.collect(resDirs)
+    val detectedResources = collector.collect(sourceResDirs)
     val references = detector.detect(sourceDirs, resDirs)
     val analysis = pruner.analyze(detectedResources, references, excludePatterns, targetTypes, excludeTypes)
 
@@ -180,6 +204,7 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
     collector: CompositeResourceCollector,
     detector: CompositeUsageDetector,
     pruner: DefaultResourcePruner,
+    sourceResDirs: List<java.nio.file.Path>,
     resDirs: List<java.nio.file.Path>,
     sourceDirs: List<java.nio.file.Path>,
     excludePatterns: List<Regex>,
@@ -207,7 +232,7 @@ abstract class AggregatePruneResourcesTask : BaseResourcePrunerTask() {
       }
 
       // Re-collect and re-detect on current state
-      val detectedResources = collector.collect(resDirs)
+      val detectedResources = collector.collect(sourceResDirs)
       val references = detector.detect(sourceDirs, resDirs)
       val analysis = pruner.analyze(detectedResources, references, excludePatterns, targetTypes, excludeTypes)
 

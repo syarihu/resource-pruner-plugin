@@ -25,10 +25,11 @@ abstract class PruneResourcesPreviewTask : BaseResourcePrunerTask() {
     logger.lifecycle("Previewing resources to prune...")
 
     val resDirs = resDirectories.files.map { it.toPath() }
+    val sourceResDirs = filterSourceResDirectories(resDirs)
     val sourceDirs = sourceDirectories.files.map { it.toPath() }
 
-    logger.info("Resource directories: ${resDirs.size}")
-    resDirs.forEach { logger.info("  - $it") }
+    logger.info("Resource directories: ${sourceResDirs.size} (${resDirs.size - sourceResDirs.size} build directories excluded)")
+    sourceResDirs.forEach { logger.info("  - $it") }
     logger.info("Source directories: ${sourceDirs.size}")
     sourceDirs.forEach { logger.info("  - $it") }
 
@@ -56,7 +57,7 @@ abstract class PruneResourcesPreviewTask : BaseResourcePrunerTask() {
 
     // Collect resources
     val collector = CompositeResourceCollector.createDefault()
-    val detectedResources = collector.collect(resDirs)
+    val detectedResources = collector.collect(sourceResDirs)
     logger.lifecycle("Detected ${detectedResources.size} resources")
 
     // Detect usage
