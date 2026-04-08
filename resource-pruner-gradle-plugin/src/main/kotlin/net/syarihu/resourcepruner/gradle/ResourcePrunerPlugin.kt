@@ -28,10 +28,14 @@ import java.io.File
  * ```
  *
  * Tasks:
- * - `pruneResources`: Prune resources unused across all variants (parallel-safe)
- * - `pruneResourcesPreview`: Preview resources unused across all variants
+ * - `pruneResources`: Prune resources unused across all variants by executing per-variant tasks sequentially
+ * - `pruneResourcesPreview`: Preview resources unused across all variants (reads only, no deletion)
  * - `pruneResources{Variant}`: Remove unused resources for a specific variant
  * - `pruneResourcesPreview{Variant}`: Preview unused resources for a specific variant
+ *
+ * Note: The aggregate tasks (`pruneResources`, `pruneResourcesPreview`) execute per-variant tasks
+ * in sequence. Each per-variant task analyzes and prunes resources for that variant only.
+ * When pruning, resources unused in any variant will be removed.
  */
 class ResourcePrunerPlugin : Plugin<Project> {
   override fun apply(project: Project) {
@@ -70,7 +74,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
     isLibrary: Boolean,
   ) {
     // Register lifecycle tasks eagerly (before onVariants)
-    // These simply delegate to per-variant tasks in sequence
+    // These delegate to per-variant tasks sequentially using dependsOn + mustRunAfter
     val aggregatePruneTask = project.tasks.register("pruneResources") { task ->
       task.group = TASK_GROUP
       task.description = "Prune resources for all variants sequentially"
