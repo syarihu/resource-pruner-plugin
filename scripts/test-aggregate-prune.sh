@@ -23,7 +23,7 @@ if [ "$GRADLE_EXIT_CODE" -ne 0 ]; then
 fi
 
 # Verify that aggregate pruning ran
-if echo "$OUTPUT" | grep -q "Resources unused across all variants:"; then
+if echo "$OUTPUT" | grep -q "Resources pruned:"; then
   echo "SUCCESS: Aggregate task loaded detection results from all variants"
 else
   echo "FAILURE: Aggregate task did not load detection results"
