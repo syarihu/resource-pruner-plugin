@@ -15,7 +15,7 @@ if [ "$GRADLE_EXIT_CODE" -ne 0 ]; then
 fi
 
 # Verify that aggregate preview loaded detection results
-if echo "$OUTPUT" | grep -q "Resources to prune (unused across all variants):"; then
+if echo "$OUTPUT" | grep -q "Resources to prune:"; then
   echo "SUCCESS: Aggregate preview detected unused resources"
 else
   echo "FAILURE: Aggregate preview did not report results"

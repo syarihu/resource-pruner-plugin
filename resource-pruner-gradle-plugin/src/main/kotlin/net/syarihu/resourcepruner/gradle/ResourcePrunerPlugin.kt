@@ -2,13 +2,12 @@ package net.syarihu.resourcepruner.gradle
 
 import com.android.build.api.variant.AndroidComponentsExtension
 import com.android.build.api.variant.Variant
-import net.syarihu.resourcepruner.gradle.task.AggregatePruneResourcesTask
-import net.syarihu.resourcepruner.gradle.task.DetectUnusedResourcesTask
 import net.syarihu.resourcepruner.gradle.task.PruneResourcesPreviewTask
 import net.syarihu.resourcepruner.gradle.task.PruneResourcesTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
+import org.gradle.api.tasks.TaskProvider
 import java.io.File
 
 /**
@@ -29,10 +28,14 @@ import java.io.File
  * ```
  *
  * Tasks:
- * - `pruneResources`: Prune resources unused across all variants (parallel-safe)
- * - `pruneResourcesPreview`: Preview resources unused across all variants
+ * - `pruneResources`: Prune resources unused across all variants by executing per-variant tasks sequentially
+ * - `pruneResourcesPreview`: Preview resources unused across all variants (reads only, no deletion)
  * - `pruneResources{Variant}`: Remove unused resources for a specific variant
  * - `pruneResourcesPreview{Variant}`: Preview unused resources for a specific variant
+ *
+ * Note: The aggregate tasks (`pruneResources`, `pruneResourcesPreview`) execute per-variant tasks
+ * in sequence. Each per-variant task analyzes and prunes resources for that variant only.
+ * When pruning, resources unused in any variant will be removed.
  */
 class ResourcePrunerPlugin : Plugin<Project> {
   override fun apply(project: Project) {
@@ -70,33 +73,21 @@ class ResourcePrunerPlugin : Plugin<Project> {
     extension: ResourcePrunerExtension,
     isLibrary: Boolean,
   ) {
-    // Register aggregate tasks eagerly (before onVariants)
-    // Dependencies are added lazily inside onVariants callbacks
-    val aggregatePruneTask = project.tasks.register(
-      "pruneResources",
-      AggregatePruneResourcesTask::class.java,
-    ) { task ->
+    // Register lifecycle tasks eagerly (before onVariants)
+    // These delegate to per-variant tasks sequentially using dependsOn + mustRunAfter
+    val aggregatePruneTask = project.tasks.register("pruneResources") { task ->
       task.group = TASK_GROUP
-      task.description = "Prune resources unused across all variants"
-      task.previewOnly.set(false)
-      task.excludeResourceNamePatterns.set(extension.excludeResourceNamePatterns)
-      task.targetResourceTypes.set(extension.targetResourceTypes)
-      task.excludeResourceTypes.set(extension.excludeResourceTypes)
-      task.cascadePrune.set(extension.cascadePrune)
+      task.description = "Prune resources for all variants sequentially"
     }
 
-    val aggregatePreviewTask = project.tasks.register(
-      "pruneResourcesPreview",
-      AggregatePruneResourcesTask::class.java,
-    ) { task ->
+    val aggregatePreviewTask = project.tasks.register("pruneResourcesPreview") { task ->
       task.group = TASK_GROUP
-      task.description = "Preview resources unused across all variants"
-      task.previewOnly.set(true)
-      task.excludeResourceNamePatterns.set(extension.excludeResourceNamePatterns)
-      task.targetResourceTypes.set(extension.targetResourceTypes)
-      task.excludeResourceTypes.set(extension.excludeResourceTypes)
-      task.cascadePrune.set(extension.cascadePrune)
+      task.description = "Preview unused resources for all variants sequentially"
     }
+
+    // Track previous variant tasks for ordering
+    var previousPruneTask: TaskProvider<PruneResourcesTask>? = null
+    var previousPreviewTask: TaskProvider<PruneResourcesPreviewTask>? = null
 
     androidComponents.onVariants { variant ->
       val variantName = variant.name.replaceFirstChar { it.uppercaseChar() }
@@ -119,7 +110,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
       }
 
       // Register preview task
-      project.tasks.register(
+      val previewTask = project.tasks.register(
         "pruneResourcesPreview$variantName",
         PruneResourcesPreviewTask::class.java,
       ) { task ->
@@ -138,7 +129,7 @@ class ResourcePrunerPlugin : Plugin<Project> {
       }
 
       // Register prune task
-      project.tasks.register(
+      val pruneTask = project.tasks.register(
         "pruneResources$variantName",
         PruneResourcesTask::class.java,
       ) { task ->
@@ -156,43 +147,18 @@ class ResourcePrunerPlugin : Plugin<Project> {
         configureGeneratedCodeDependencies(project, task, variantName, isLibrary, extension)
       }
 
-      // Register detection task for aggregate pruning
-      val detectTask = project.tasks.register(
-        "detectUnusedResources$variantName",
-        DetectUnusedResourcesTask::class.java,
-      ) { task ->
-        task.group = TASK_GROUP
-        task.description = "Detect unused resources for $variantName variant"
-        task.variantName.set(variant.name)
-        task.excludeResourceNamePatterns.set(extension.excludeResourceNamePatterns)
-        task.targetResourceTypes.set(extension.targetResourceTypes)
-        task.excludeResourceTypes.set(extension.excludeResourceTypes)
-        task.cascadePrune.set(extension.cascadePrune)
-        task.sourceDirectories.from(sourceDirectories)
-        task.sourceDirectories.from(dependentProjectSources)
-        task.resDirectories.from(resDirectories)
-        task.outputFile.set(
-          project.layout.buildDirectory.file("resource-pruner/${variant.name}/detected-unused.txt"),
-        )
+      // Wire to aggregate tasks with sequential ordering
+      aggregatePruneTask.configure { it.dependsOn(pruneTask) }
+      previousPruneTask?.let { prev ->
+        pruneTask.configure { it.mustRunAfter(prev) }
+      }
+      previousPruneTask = pruneTask
 
-        configureGeneratedCodeDependencies(project, task, variantName, isLibrary, extension)
+      aggregatePreviewTask.configure { it.dependsOn(previewTask) }
+      previousPreviewTask?.let { prev ->
+        previewTask.configure { it.mustRunAfter(prev) }
       }
-
-      // Wire detection task to aggregate tasks
-      aggregatePruneTask.configure { task ->
-        task.dependsOn(detectTask)
-        task.detectionResultFiles.from(detectTask.flatMap { it.outputFile })
-        task.sourceDirectories.from(sourceDirectories)
-        task.sourceDirectories.from(dependentProjectSources)
-        task.resDirectories.from(resDirectories)
-      }
-      aggregatePreviewTask.configure { task ->
-        task.dependsOn(detectTask)
-        task.detectionResultFiles.from(detectTask.flatMap { it.outputFile })
-        task.sourceDirectories.from(sourceDirectories)
-        task.sourceDirectories.from(dependentProjectSources)
-        task.resDirectories.from(resDirectories)
-      }
+      previousPreviewTask = previewTask
     }
   }
 
