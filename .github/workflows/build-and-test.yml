@@ -76,6 +76,12 @@ jobs:
             agp: "8.13.2"
             name: "Gradle 9.2 + AGP 8.13.2"
             run_example_tests: true
+          # AGP 9.x: built-in Kotlin; also covers the Compose-enabled dependent app (#57)
+          - gradle: "9.9.0"
+            gradle_checksum: "0b00b0ffe07c4d4789c12d4935a44a7057d55774b7540bd4a3f76f336deb177a"
+            agp: "9.5.1"
+            name: "Gradle 9.9 + AGP 9.5.1"
+            run_example_tests: true
 
     name: ${{ matrix.name }}
 
@@ -115,6 +121,11 @@ jobs:
       - name: Build plugin modules (without tests - tests run in the build job with latest Gradle)
         if: ${{ !matrix.run_example_tests }}
         run: ./gradlew :resource-pruner-core:assemble :resource-pruner-gradle-plugin:assemble -PexcludeExample --no-configuration-cache
+
+      # Example dependencies (core 1.19.1, Compose 1.12) require AGP 9.1+, so the AGP 8 entry only runs the prune scripts
+      - name: Assemble example apps
+        if: ${{ matrix.run_example_tests && startsWith(matrix.agp, '9.') }}
+        run: ./gradlew :example:assembleDebug :example-lib:assembleDebug :example-multi-app:assembleDebug --no-configuration-cache
 
       - name: "Test: pruneResourcesPreview detects unused resources correctly"
         if: ${{ matrix.run_example_tests }}

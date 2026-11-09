@@ -13,6 +13,7 @@ pluginManagement {
   plugins {
     kotlin("jvm") version embeddedKotlinVersion
     kotlin("android") version embeddedKotlinVersion
+    id("org.jetbrains.kotlin.plugin.compose") version embeddedKotlinVersion
     id("net.syarihu.resource-pruner") version versionName
   }
 }

@@ -1,13 +1,18 @@
 plugins {
   alias(pluginLibs.plugins.android.application)
-  kotlin("android")
+  kotlin("android") apply false
   alias(exampleLibs.plugins.paraphrase)
   id("net.syarihu.resource-pruner")
 }
 
+// AGP 9 has built-in Kotlin and rejects the Kotlin Android plugin; AGP 8.x still needs it.
+if (com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.substringBefore('.').toInt() < 9) {
+  apply(plugin = "org.jetbrains.kotlin.android")
+}
+
 android {
   namespace = "net.syarihu.resourcepruner.example"
-  compileSdk = 35
+  compileSdk = 37
 
   defaultConfig {
     applicationId = "net.syarihu.resourcepruner.example"
@@ -33,10 +38,9 @@ android {
   }
 }
 
-kotlin {
-  compilerOptions {
-    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-  }
+// Type-safe `kotlin {}` accessor is unavailable when the plugin is applied conditionally
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+  compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
 }
 
 dependencies {
