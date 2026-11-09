@@ -44,7 +44,7 @@ jobs:
 
   # Test plugin compatibility with different Gradle versions
   #
-  # Note: Example project tests (test scripts) only run on Gradle 9.x because some example
+  # Note: Example project tests (test scripts) only run on Gradle 9.x (AGP 8.13+ and 9.x) because some example
   # dependencies (e.g., app.cash.paraphrase 0.5.0+) require Gradle 9.0 or newer.
   # Gradle 8.x jobs verify plugin compatibility by assembling the plugin modules only
   # (without tests, since test dependencies like kotest also require newer Kotlin).
@@ -75,6 +75,12 @@ jobs:
             gradle_checksum: "72f44c9f8ebcb1af43838f45ee5c4aa9c5444898b3468ab3f4af7b6076c5bc3f"
             agp: "8.13.2"
             name: "Gradle 9.2 + AGP 8.13.2"
+            run_example_tests: true
+          # AGP 9.x: built-in Kotlin; also covers the Compose-enabled dependent app (#57)
+          - gradle: "9.9.0"
+            gradle_checksum: "0b00b0ffe07c4d4789c12d4935a44a7057d55774b7540bd4a3f76f336deb177a"
+            agp: "9.5.1"
+            name: "Gradle 9.9 + AGP 9.5.1"
             run_example_tests: true
 
     name: ${{ matrix.name }}

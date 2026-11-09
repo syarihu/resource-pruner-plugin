@@ -3,6 +3,8 @@
 echo "=== Test: pruneResourcesPreview should detect multi-module usage correctly ==="
 
 # Run pruneResourcesPreview on example-lib module
+# This also covers #57: example-multi-app (a dependent app) enables Compose, and configuring
+# this task must not realize its tasks (e.g. generateReleaseComposePreviewRunfiles)
 # This tests that resources used by dependent modules (example, example-multi-app) are preserved
 # Capture output and exit code separately to ensure output is always displayed
 OUTPUT=$(./gradlew :example-lib:pruneResourcesPreviewDebug --no-configuration-cache 2>&1) || GRADLE_EXIT_CODE=$?
