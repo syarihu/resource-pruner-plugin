@@ -175,13 +175,13 @@ class ResourcePrunerPlugin : Plugin<Project> {
     isLibrary: Boolean,
     extension: ResourcePrunerExtension,
   ) {
+    val taskNames = setOf(
+      "generateFormattedResources$variantName",
+      "dataBindingGenBaseClasses$variantName",
+    )
+
     // Current project's code generation tasks
-    project.tasks.findByName("generateFormattedResources$variantName")?.let { paraphraseTask ->
-      task.dependsOn(paraphraseTask)
-    }
-    project.tasks.findByName("dataBindingGenBaseClasses$variantName")?.let { dataBindingTask ->
-      task.dependsOn(dataBindingTask)
-    }
+    task.dependsOn(codeGenerationTasks(project, taskNames))
 
     // For library modules, add dependencies on dependent projects' code generation tasks
     if (isLibrary && extension.scanDependentProjects.get()) {
@@ -191,21 +191,27 @@ class ResourcePrunerPlugin : Plugin<Project> {
       val allDependents = collectAllDependentProjects(project, rootProject)
 
       for (dependentProject in allDependents) {
-        val paraphraseTaskName = "generateFormattedResources$variantName"
-        val dataBindingTaskName = "dataBindingGenBaseClasses$variantName"
-
-        // Try to add dependency if task already exists
-        dependentProject.tasks.findByName(paraphraseTaskName)?.let { task.dependsOn(it) }
-        dependentProject.tasks.findByName(dataBindingTaskName)?.let { task.dependsOn(it) }
-
-        // Also listen for task additions to catch tasks registered later
-        dependentProject.tasks.whenTaskAdded { addedTask ->
-          if (addedTask.name == paraphraseTaskName || addedTask.name == dataBindingTaskName) {
-            task.dependsOn(addedTask)
-          }
-        }
+        task.dependsOn(codeGenerationTasks(dependentProject, taskNames))
       }
     }
+  }
+
+  /**
+   * Returns the tasks in [project] whose names are in [taskNames], resolved when the task graph is built.
+   *
+   * Only task names are inspected so that no other task gets realized. `whenTaskAdded` and
+   * `matching {}` realize every task in the project, which breaks when a lazily registered task
+   * throws on creation (e.g. AGP 9.5's `generate<Variant>ComposePreviewRunfiles` for variants
+   * without unit tests). Resolving at graph time also covers tasks registered after this call.
+   * `tasks.named(Spec<String>)` would do the same but requires Gradle 8.6.
+   */
+  private fun codeGenerationTasks(
+    project: Project,
+    taskNames: Set<String>,
+  ) = project.provider {
+    project.tasks.names
+      .filter { it in taskNames }
+      .map { project.tasks.named(it) }
   }
 
   /**
