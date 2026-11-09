@@ -3,16 +3,21 @@
 echo "=== Test: pruneResourcesPreview should detect multi-module usage correctly ==="
 
 # Run pruneResourcesPreview on example-lib module
-# This also covers #57: example-multi-app (a dependent app) enables Compose, and configuring
-# this task must not realize its tasks (e.g. generateReleaseComposePreviewRunfiles)
+# This also covers #57: configuring this task must not realize tasks of dependent apps.
+# example-multi-app enables Compose (AGP may throw while creating a Compose task), and
+# -PresourcePruner.assertNoEagerRealization makes it fail if any guarded task gets realized,
+# so the test does not depend on AGP throwing.
 # This tests that resources used by dependent modules (example, example-multi-app) are preserved
 # Capture output and exit code separately to ensure output is always displayed
-OUTPUT=$(./gradlew :example-lib:pruneResourcesPreviewDebug --no-configuration-cache 2>&1) || GRADLE_EXIT_CODE=$?
+OUTPUT=$(./gradlew :example-lib:pruneResourcesPreviewDebug -PresourcePruner.assertNoEagerRealization --no-configuration-cache 2>&1) || GRADLE_EXIT_CODE=$?
 
 echo "$OUTPUT"
 
 if [ -n "$GRADLE_EXIT_CODE" ] && [ "$GRADLE_EXIT_CODE" -ne 0 ]; then
   echo "FAILURE: Gradle command failed with exit code $GRADLE_EXIT_CODE"
+  if echo "$OUTPUT" | grep -q "realized eagerly"; then
+    echo "The plugin realized tasks of a dependent project while configuring (see #57)"
+  fi
   exit 1
 fi
 

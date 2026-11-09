@@ -47,6 +47,16 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
   compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
 }
 
+// Regression guard for #57: when enabled, fail if another project's configuration realizes this
+// project's tasks eagerly. configureEach only runs for tasks that get realized.
+if (providers.gradleProperty("resourcePruner.assertNoEagerRealization").isPresent) {
+  tasks.configureEach {
+    if (name == "assembleRelease") {
+      throw GradleException("Task '$path' was realized eagerly while configuring another project (#57)")
+    }
+  }
+}
+
 configurations.all {
   resolutionStrategy {
     // Force consistent Kotlin stdlib version
