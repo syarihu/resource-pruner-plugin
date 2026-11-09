@@ -122,6 +122,11 @@ jobs:
         if: ${{ !matrix.run_example_tests }}
         run: ./gradlew :resource-pruner-core:assemble :resource-pruner-gradle-plugin:assemble -PexcludeExample --no-configuration-cache
 
+      # Example dependencies (core 1.19.1, Compose 1.12) require AGP 9.1+, so the AGP 8 entry only runs the prune scripts
+      - name: Assemble example apps
+        if: ${{ matrix.run_example_tests && startsWith(matrix.agp, '9.') }}
+        run: ./gradlew :example:assembleDebug :example-lib:assembleDebug :example-multi-app:assembleDebug --no-configuration-cache
+
       - name: "Test: pruneResourcesPreview detects unused resources correctly"
         if: ${{ matrix.run_example_tests }}
         run: ./scripts/test-preview.sh

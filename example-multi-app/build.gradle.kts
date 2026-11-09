@@ -1,7 +1,6 @@
 plugins {
   alias(pluginLibs.plugins.android.application)
   kotlin("android") apply false
-  // Compose is enabled here as a regression test for #57
   id("org.jetbrains.kotlin.plugin.compose")
 }
 
@@ -12,7 +11,7 @@ if (com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.substringBefore('.').toInt
 
 android {
   namespace = "net.syarihu.resourcepruner.examplemultiapp"
-  compileSdk = 35
+  compileSdk = 37
 
   defaultConfig {
     applicationId = "net.syarihu.resourcepruner.examplemultiapp"
@@ -33,7 +32,7 @@ android {
     targetCompatibility = JavaVersion.VERSION_17
   }
 
-  // Compose and Android resources in unit tests are enabled as a regression test for #57
+  // Compose and Android resources in unit tests are enabled here as a regression test for #57
   buildFeatures {
     compose = true
   }

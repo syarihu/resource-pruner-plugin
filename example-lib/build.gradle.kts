@@ -11,7 +11,7 @@ if (com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.substringBefore('.').toInt
 
 android {
   namespace = "net.syarihu.resourcepruner.examplelib"
-  compileSdk = 35
+  compileSdk = 37
 
   defaultConfig {
     minSdk = 24

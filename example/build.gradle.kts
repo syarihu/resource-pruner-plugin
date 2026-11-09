@@ -12,7 +12,7 @@ if (com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.substringBefore('.').toInt
 
 android {
   namespace = "net.syarihu.resourcepruner.example"
-  compileSdk = 35
+  compileSdk = 37
 
   defaultConfig {
     applicationId = "net.syarihu.resourcepruner.example"
