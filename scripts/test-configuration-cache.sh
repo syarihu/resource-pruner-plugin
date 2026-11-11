@@ -5,9 +5,11 @@ echo "=== Test: Configuration Cache should work correctly ==="
 
 # Matches the problem summary Gradle prints when problems are reported as warnings
 # (e.g. "1 problem was found storing the configuration cache.")
-CC_PROBLEM_PATTERN="problems? (was|were) found (storing|reusing) the configuration cache|Configuration cache problems found"
+CC_PROBLEM_PATTERN="problems? (was|were) found (storing|reusing) the configuration cache|Configuration cache entry (stored|reused|discarded) with [0-9]+ problems?|Configuration cache problems found"
 
-# Clean first
+# Clean first. Remove stored entries too, so that the first run has to store a new one
+# instead of reusing an entry left over from an earlier run.
+rm -rf .gradle/configuration-cache
 ./gradlew clean
 
 # First run - should store cache
