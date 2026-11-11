@@ -13,6 +13,7 @@ class BaseResourcePrunerTaskTest : DescribeSpec({
     describe("filterSourceResDirectories") {
       val project = ProjectBuilder.builder().build()
       val task = project.tasks.register("testTask", TestResourcePrunerTask::class.java).get()
+      task.buildDirectory.set(project.layout.buildDirectory)
       val buildDir = project.layout.buildDirectory.get().asFile.toPath()
 
       it("should exclude resource directories under the build directory") {
@@ -65,6 +66,21 @@ class BaseResourcePrunerTaskTest : DescribeSpec({
 
         result shouldHaveSize 2
         result shouldContainExactlyInAnyOrder listOf(srcMainRes, srcDebugRes)
+      }
+
+      it("should exclude resource directories under custom build directory and keep default build directory") {
+        val customTask = project.tasks.register("customBuildTask", TestResourcePrunerTask::class.java).get()
+        val customBuildDir = project.layout.projectDirectory.dir("custom-build")
+        customTask.buildDirectory.set(customBuildDir)
+
+        val customBuildResDir = customBuildDir.asFile.toPath().resolve("generated/res")
+        val defaultBuildResDir = buildDir.resolve("generated/res")
+        val resDirs = listOf(customBuildResDir, defaultBuildResDir)
+
+        val result = customTask.testFilterSourceResDirectories(resDirs)
+
+        result shouldHaveSize 1
+        result.first() shouldBe defaultBuildResDir
       }
     }
   }

@@ -2,6 +2,7 @@ package net.syarihu.resourcepruner.gradle.task
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
@@ -66,6 +67,15 @@ abstract class BaseResourcePrunerTask : DefaultTask() {
   abstract val cascadePrune: Property<Boolean>
 
   /**
+   * Project build directory captured at configuration time.
+   *
+   * Used to exclude generated resource directories.
+   * Marked as [Internal] because it only filters inputs that are already tracked.
+   */
+  @get:Internal
+  abstract val buildDirectory: DirectoryProperty
+
+  /**
    * Maximum number of cascade iterations.
    */
   @get:Internal
@@ -83,7 +93,7 @@ abstract class BaseResourcePrunerTask : DefaultTask() {
    * or Firebase) are auto-generated and should not be targets for pruning.
    */
   protected fun filterSourceResDirectories(resDirs: List<Path>): List<Path> {
-    val buildDir = project.layout.buildDirectory.get().asFile.toPath()
+    val buildDir = buildDirectory.get().asFile.toPath()
     return resDirs.filterNot { it.startsWith(buildDir) }
   }
 }
