@@ -29,7 +29,7 @@ java {
   withSourcesJar()
 }
 
-val dokkaJavadocJar by tasks.registering(Jar::class) {
+val dokkaJavadocJar = tasks.register<Jar>("dokkaJavadocJar") {
   dependsOn(tasks.dokkaJavadoc)
   from(tasks.dokkaJavadoc.flatMap { it.outputDirectory })
   archiveClassifier.set("javadoc")
