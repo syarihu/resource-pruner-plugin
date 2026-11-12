@@ -2,7 +2,7 @@
 description: Take a Renovate PR URL and review the dependency update (impact, CI failures, merge verdict), then post the review as a PR comment
 argument-hint: "<Renovate PR URL or number>"
 allowed-tools: Bash(gh pr view:*), Bash(gh pr diff:*), Bash(gh pr checks:*), Bash(gh pr comment:*), Bash(gh run view:*), Bash(gh repo view:*), Bash(gh api:*), Bash(jq:*), Bash(git fetch:*), Bash(git rev-parse:*), Bash(git status:*), Read, Write, Glob, Grep, WebSearch, WebFetch, AskUserQuestion
-model: claude-sonnet-4-6
+model: sonnet
 ---
 
 <role>
