@@ -1,6 +1,6 @@
 [versions]
 kotest = "6.2.7"
-spotless = "8.11.0"
+spotless = "8.12.0"
 ktlint = "1.0.1"
 dokka = "2.3.0"
 nmcp = "1.6.2"
